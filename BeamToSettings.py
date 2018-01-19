@@ -33,6 +33,9 @@ class BeamDefinition:
     self.phaseControlRange = 32
     self.gainControlRange = 32
 
+    self.phaseControlMax = 2 * pi; #radians
+    self.gainControlMax = 1; #??? check units on this
+
 
   def maxArrayFactor(self):
     """WArning, brute force incoming O(32^4*2^2)
@@ -53,6 +56,9 @@ class BeamDefinition:
         for y in range(0, self.phaseControlRange):
           for z in range(0, self.phaseControlRange):
             d = [[w, x], [y,z]]
+            #scales every value of d to be in proper phase units
+            map(lambda x: map(lambda y: y*self.phaseControlMax/self.phaseControlRange, x), d)
+
             testAF = self._ArrayFactorPlanar(self.theta, self.phi, I, d, self.waveLength)
             if abs(testAF) > abs(maxAF):
               maxAF = testAF
@@ -62,8 +68,9 @@ class BeamDefinition:
 
   def _ArrayFactorPlanar(self, theta, phi, I, d, waveLength):
     """ private: calculate the strength of a configuratio at angle theta/phi
-    I:  array of amplitudes of each element
-    d:  array of phases of each element
+    on a square plane antenna array.
+    I:  2D array of amplitudes of each element in square array
+    d:  2D array of phases of each element in square array
 
     return: scalar ArrayFactor (not normalized)"""
 
