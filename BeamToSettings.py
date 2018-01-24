@@ -1,12 +1,13 @@
+#!/usr/bin/env python
 #-------------------------------------------------------------------------------
 # Name:        Beam Definition
 # Purpose:     Convert from polar coordinates
 #
-# Author:      Grayson Colwell
+# Author:      Andy MacGregor 
 #
-# Created:     12/12/2017
+# Created:     1/12/2017
 # Copyright:   (c) Anokiwave Capstone Team 2017
-# Licence:     <Memes>
+# Licence:     tbd by Anokiwave 
 #-------------------------------------------------------------------------------
 
 from math import sin, cos, pow, e, pi, radians
@@ -38,7 +39,7 @@ class BeamDefinition:
 
 
   def maxArrayFactor(self):
-    """WArning, brute force incoming O(32^4*2^2)
+    """Warning, brute force incoming O(32^4*2^2)
 
     given a theta and phi angle, return the I and d arrays that produce
     the maximum beam in that direction
@@ -64,7 +65,7 @@ class BeamDefinition:
               maxAF = testAF
               maxAF_d = d
 
-    return d
+    return maxAF_d 
 
   def _ArrayFactorPlanar(self, theta, phi, I, d, waveLength):
     """ private: calculate the strength of a configuratio at angle theta/phi
@@ -76,23 +77,25 @@ class BeamDefinition:
 
     dist = 1 #placeholder -- distance between adjacent elements
     k = 2 * pi / waveLength # k = wave number
-
+    
     cumulativeAF = 0
-    for n in range(0,1):
-      for m in range(0,1):
+    for n in range(0, 2):
+      for m in range(0,2):
         #intermediate variables for whats about to come
         n_factor = k*dist*n*sin(theta)*cos(phi)
         m_factor = k*dist*m*sin(theta)*sin(phi)
 
         #exponential term to calculate AF
-        cumulativeAF += I[n][m] * exp(d[n][m] + n_factor + m_factor)
+        cumulativeAF += I[n][m] * exp(1j *(d[n][m] + n_factor + m_factor))
 
     return cumulativeAF
 
 def main():
   """Test harness for this module """
   #Does some test calculations to make sure the module functions
-  w = 28 * pow(10,9) #29GHz
+  f = 28 * pow(10,9) #29GHz
+  c = 3 * pow(10, 8)
+  w = c/f 
 
   #----------------------------------
   ## Basic tests to see different outputs
@@ -123,5 +126,9 @@ def main():
 
 
 if __name__ == '__main__':
-  import time
+  from time import time
+  t1 = time()
   main()
+  t2 = time()
+  tt = t2 - t1
+  print "Total time elapsed: " + tt.__str__() + "s"
