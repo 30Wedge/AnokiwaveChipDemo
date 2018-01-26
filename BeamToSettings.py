@@ -44,7 +44,8 @@ class BeamDefinition:
     given a theta and phi angle, return the I and d arrays that produce
     the maximum beam in that direction
 
-    return  array containing the phase offsets for each antenna [[NW, NE], [SW, SE]]"""
+    return  array containing the phase offsets for each antenna [[NW, NE], [SW, SE]]
+            maximum"""
 
     #I is just going to be uniformly illuminated
     I = [[1,1], [1,1]]
@@ -65,7 +66,7 @@ class BeamDefinition:
               maxAF = testAF
               maxAF_d = d
 
-    return maxAF_d 
+    return maxAF_d, abs(maxAF)
 
   def _ArrayFactorPlanar(self, theta, phi, I, d, waveLength):
     """ private: calculate the strength of a configuratio at angle theta/phi
@@ -117,7 +118,7 @@ def main():
   #--------------------------------------
   ##with 0 and 0 you'd expect even phase offset
   bUniform = BeamDefinition(0, 0, w, 1)
-  dU = bUniform.maxArrayFactor()
+  dU, x = bUniform.maxArrayFactor()
   print "BeamDefinition(0, 0, w, 1)"
   print dU.__str__()  + "\n"
 
