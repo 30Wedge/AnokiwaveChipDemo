@@ -10,7 +10,7 @@
 # Licence:     tbd by Anokiwave 
 #-------------------------------------------------------------------------------
 
-from math import sin, cos, pow, e, pi, radians
+from math import sin, cos, pow, e, pi, radians, trunc, degrees
 from cmath import exp
 class BeamDefinition:
   """ Calculates AWMF phase settings from beam definition
@@ -18,12 +18,20 @@ class BeamDefinition:
   Give it spherical coordinates, and it can return the AWMF-0108 phase settings
   """
 
-  def __init__(self, theta, phi, waveLength, beamStrength):
+  #speed of light
+  C = 299792458
+
+  def __init__(self, theta, phi, waveLength, beamStrength=None):
     """Inits the object with polar coordinate input 
     theta           polar angle offset in degrees
     phi             azimuth angle offset in degrees
     waveLength      ...
-    beamStrength    useless for now"""
+    beamStrength    useless for now. leave blank.
+
+    A = BeamDefinition(theta, phi, wavelength) 
+
+    A.maxArrayFactor()
+      [[x],[],[x][x]], maxAf """
 
     self.theta = radians(theta) #math module functions use radians
     self.phi = radians(phi)
@@ -37,61 +45,82 @@ class BeamDefinition:
     self.phaseControlMax = 2 * pi; #radians
     self.gainControlMax = 1; #??? check units on this
 
+    self.antennaGridSize = {}
+    self.antennaGridSize['x'] = 2
+    self.antennaGridSize['y'] = 2
 
   def maxArrayFactor(self):
-    """Warning, brute force incoming O(32^4*2^2)
+    """
+      returns:  array containing the phase offset for each antenna 
+                to point at the specified theta/phi direction in awmf-0108 settings
 
-    given a theta and phi angle, return the I and d arrays that produce
-    the maximum beam in that direction
-
-    return  array containing the phase offsets for each antenna [[NW, NE], [SW, SE]]
-            maximum"""
-
-    #I is just going to be uniformly illuminated
-    I = [[1,1], [1,1]]
-
-    #Tests every possible phase configuration possible and only keep the best one
-    maxAF = 0
-    maxAF_d = []
-    for w in range(0, self.phaseControlRange):
-      for x in range(0, self.phaseControlRange):
-        for y in range(0, self.phaseControlRange):
-          for z in range(0, self.phaseControlRange):
-            d = [[w, x], [y,z]]
-            #scales every value of d to be in proper phase units
-            map(lambda x: map(lambda y: y*self.phaseControlMax/self.phaseControlRange, x), d)
-
-            testAF = self._ArrayFactorPlanar(self.theta, self.phi, I, d, self.waveLength)
-            if abs(testAF) > abs(maxAF):
-              maxAF = testAF
-              maxAF_d = d
-
-    return maxAF_d, abs(maxAF)
-
-  def _ArrayFactorPlanar(self, theta, phi, I, d, waveLength):
-    """ private: calculate the strength of a configuratio at angle theta/phi
-    on a square plane antenna array.
-    I:  2D array of amplitudes of each element in square array
-    d:  2D array of phases of each element in square array
-
-    return: scalar ArrayFactor (not normalized)"""
-
-    dist = 1 #placeholder -- distance between adjacent elements
-    k = 2 * pi / waveLength # k = wave number
+                [ [NW , NE],
+                  [SW , SE]]
+    """
+    k = 2 * pi / (self.waveLength) # wave number
     
-    cumulativeAF = 0
-    for n in range(0, 2):
-      for m in range(0,2):
-        #intermediate variables for whats about to come
-        n_factor = k*dist*n*sin(theta)*cos(phi)
-        m_factor = k*dist*m*sin(theta)*sin(phi)
+    ##TODO phi/theta to ew/ns angle the real way
+    ew_angle = self.phi
+    nw_angle = self.theta
 
-        #exponential term to calculate AF
-        cumulativeAF += I[n][m] * exp(1j *(d[n][m] + n_factor + m_factor))
+    ##TODO take d in properly
+    d = 5 * pow(10,-3) 
 
-    return cumulativeAF
+    #calculate offsets between elements
+    ew_phaseOffset = -k * d * sin(ew_angle);
+    ns_phaseOffset = -k * d * sin(nw_angle);
 
-def main():
+    ##Calculate offsets for each element
+    #inifialize offset list with zeros
+    offsets = [ [0 for x in range(self.antennaGridSize['x'])] for y in range(self.antennaGridSize['y'])]
+    for i in range(0, self.antennaGridSize['x']):
+      # add ns offset between rows
+      if i == 0:
+        offsets[0][0] = 0
+      else:
+        offsets[i][0] = offsets[i-1][0] + ns_phaseOffset
+      
+      # add ew offset between columns
+      for j in range(1, self.antennaGridSize['y']):
+        offsets[i][j] = offsets[i][j - 1] + ew_phaseOffset
+
+    #normalize the offset array to settings
+    n_offsets = map(lambda x: map(lambda y: self._radiansToAwmf0108(y), x), offsets) 
+
+    #TODO calculate Array factor
+    af = 1
+    return n_offsets, af
+
+
+
+  def fullArrayFactor(self, d_theta):
+    """
+      returns:  array containing the AF for the particular settings at every
+                spherical point spaced d_theta apart from one another
+    """
+    pass #TODO
+
+  ###Helper-funciton-land
+  def _radiansToAwmf0108(self, rads):
+    """
+      rads: angle in radians to convert
+      return: phase setting in awmf-0108 format
+    """
+    interval = self.phaseControlMax / self.phaseControlRange
+    
+    #fix to be in range between 0 and 2pi radians
+    fixed = rads % (2*pi)
+
+    return trunc(self._roundToNearest(fixed, interval) / interval);
+
+  def _roundToNearest(self, x, multiple):
+    """
+      round x to the nearest multiple of _multiple_
+      credit to stackOverflow
+    """
+    return multiple * round( float(x) / multiple)
+
+def test():
   """Test harness for this module """
   #Does some test calculations to make sure the module functions
   f = 28 * pow(10,9) #29GHz
@@ -129,7 +158,7 @@ def main():
 if __name__ == '__main__':
   from time import time
   t1 = time()
-  main()
+  test()
   t2 = time()
   tt = t2 - t1
   print "Total time elapsed: " + tt.__str__() + "s"
