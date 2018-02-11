@@ -10,8 +10,7 @@
 # Licence:     tbd by Anokiwave 
 #-------------------------------------------------------------------------------
 
-from math import sin, cos, pow, e, pi, radians, trunc, degrees
-from cmath import exp
+from math import sin, cos, atan, pow, e, pi, radians, trunc, degrees
 class BeamDefinition:
   """ Calculates AWMF phase settings from beam definition
   
@@ -31,7 +30,7 @@ class BeamDefinition:
     A = BeamDefinition(theta, phi, wavelength) 
 
     A.maxArrayFactor()
-      [[x],[],[x][x]], maxAf """
+      [[x, x],[x, x]], maxAf """
 
     self.theta = radians(theta) #math module functions use radians
     self.phi = radians(phi)
@@ -41,32 +40,49 @@ class BeamDefinition:
     #AWMF-0108 constants
     self.phaseControlRange = 32
     self.gainControlRange = 32
-
     self.phaseControlMax = 2 * pi; #radians
-    self.gainControlMax = 1; #??? check units on this
+    self.gainControlMax = 1; #???TODO check units on this
 
+    #Antenna parameters
     self.antennaGridSize = {}
-    self.antennaGridSize['x'] = 2
+    self.antennaGridSize['x'] = 2 #TODO make variable/configurable?
     self.antennaGridSize['y'] = 2
+    self.antennaSpacing = 5 * pow(10,3) #TODO check if this is correct
 
-  def maxArrayFactor(self):
+    #Calculated awmf0108 settings... calculate when needed
+    self.phaseSettings = []
+    self gainSettings = []
+
+  def getPhaseSettings(self):
     """
       returns:  array containing the phase offset for each antenna 
                 to point at the specified theta/phi direction in awmf-0108 settings
+                
+                returns an xdim by ydim array of the phase settings
 
+                ex. 2x2:
                 [ [NW , NE],
                   [SW , SE]]
+
+                ex. 1x4:
+                [ [1, 2, 3, 4]]
     """
+    #if they've already been calculated, don't redo the work
+    if len(self.phaseSettings > 0):
+      return self.phaseSettings
+
     k = 2 * pi / (self.waveLength) # wave number
     
-    ##TODO phi/theta to ew/ns angle the real way
-    ew_angle = self.phi
-    nw_angle = self.theta
+    ##phi/theta to ew/ns angle 
+    #Project a 3d angle onto a 2d plane...
+    p=self.phi
+    t=self.theta 
+    ew_angle = atan( sin(p) * sin(t) / cos(t) )
+    nw_angle = atan( cos(p) * sin(t) / cos(t) )
 
-    ##TODO take d in properly
-    d = 5 * pow(10,-3) 
+    d = self.antennaSpacing
 
-    #calculate offsets between elements
+    ##calculate offsets between elements    
     ew_phaseOffset = -k * d * sin(ew_angle);
     ns_phaseOffset = -k * d * sin(nw_angle);
 
@@ -86,20 +102,45 @@ class BeamDefinition:
 
     #normalize the offset array to settings
     n_offsets = map(lambda x: map(lambda y: self._radiansToAwmf0108(y), x), offsets) 
+    
+    self.phaseSettings = n_offsets
 
-    #TODO calculate Array factor
-    af = 1
-    return n_offsets, af
+    return n_offsets
 
+  def getGainSettings(self):
+    """ 
+      Return gain settings for this configuration.
+      As long as we're using uniform illumination, set it all to 1
+    """
+    if len(self.gainSettings > 0) :
+      return self.gainSettings
 
+    xdim = self.antennaGridSize['x']
+    ydim = self.antennaGridSize['y']
+    self.gainSettings = [[1 for x in range(xdim)] for y in range(ydim)]
 
-  def fullArrayFactor(self, d_theta):
+    return self.gainSettings
+
+  def visualiseGrid(self, d_theta):
     """
       returns:  array containing the AF for the particular settings at every
                 spherical point spaced d_theta apart from one another
     """
     pass #TODO
 
+  def loadNewAntennaParameters(self, gridX, gridY, spacing):
+    """ 
+      Replaces the default antenna parameters with ones specified by the user.
+    """
+    self.antennaGridSize['x'] = gridX
+    self.antennaGridSize['y'] = gridY
+    self.antennaSpacing  d
+
+    #force recalulation of gain and phase settings
+    self.phaseSettings = []
+    self.gainSettings = []
+    return
+    
   ###Helper-funciton-land
   def _radiansToAwmf0108(self, rads):
     """
