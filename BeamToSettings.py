@@ -46,9 +46,7 @@ class BeamDefinition:
     self.gainControlMax = 1; #???TODO check units on this
 
     #Antenna parameters
-    self.antennaGridSize = {}
-    self.antennaGridSize['x'] = 2 #TODO make variable/configurable?
-    self.antennaGridSize['y'] = 2
+    self.antennaGridSize = (2, 2) # (x, y)
     self.antennaSpacing = 5 * pow(10,3) #TODO check if this is correct
 
     #Calculated awmf0108 settings... calculate when needed
@@ -90,8 +88,8 @@ class BeamDefinition:
 
     ##Calculate offsets for each element
     #inifialize offset list with zeros
-    offsets = [ [0 for x in range(self.antennaGridSize['x'])] for y in range(self.antennaGridSize['y'])]
-    for i in range(0, self.antennaGridSize['x']):
+    offsets = [ [0 for x in range(self.antennaGridSize[0])] for y in range(self.antennaGridSize[1])]
+    for i in range(0, self.antennaGridSize[0]):
       # add ns offset between rows
       if i == 0:
         offsets[0][0] = 0
@@ -99,7 +97,7 @@ class BeamDefinition:
         offsets[i][0] = offsets[i-1][0] + ns_phaseOffset
       
       # add ew offset between columns
-      for j in range(1, self.antennaGridSize['y']):
+      for j in range(1, self.antennaGridSize[1]):
         offsets[i][j] = offsets[i][j - 1] + ew_phaseOffset
 
     #normalize the offset array to settings
@@ -117,31 +115,72 @@ class BeamDefinition:
     if len(self.gainSettings > 0) :
       return self.gainSettings
 
-    xdim = self.antennaGridSize['x']
-    ydim = self.antennaGridSize['y']
+    xdim = self.antennaGridSize[0]
+    ydim = self.antennaGridSize[1]
     self.gainSettings = [[1 for x in range(xdim)] for y in range(ydim)]
 
     return self.gainSettings
-
-  def visualiseGrid(self, d_theta):
-    """
-      returns:  array containing the AF for the particular settings at every
-                spherical point spaced d_theta apart from one another
-    """
-    pass #TODO
 
   def loadNewAntennaParameters(self, gridX, gridY, spacing):
     """ 
       Replaces the default antenna parameters with ones specified by the user.
     """
-    self.antennaGridSize['x'] = gridX
-    self.antennaGridSize['y'] = gridY
+    self.antennaGridSize = (gridX, gridY)
     self.antennaSpacing  = spacing
 
     #force recalulation of gain and phase settings
     self.phaseSettings = []
     self.gainSettings = []
     return
+
+  def visualiseGrid(self, d_theta, d_phi):
+    """
+      d_theta: difference between AF test points (in degrees)
+
+      returns:  a list of tuples to graph (theta, phi, AF)
+    """
+    #iterate from theta = 0 to 180 and phi = 0 to 360 in increments of d_theta and d_phi
+    t = 0
+    p = 0
+
+    points = []
+    while t < 180 :
+      while p < 180 :
+        # calculate the Antenna Factor for this angle at these settings and add it
+        # to the list
+        a = _calculateArrayFactor(radians(t), radians(p), 
+          self.getGainSettings(), self.getPhaseSettings(), self.waveLength);
+        points.append( (t, p, a) )
+
+        p = p + d_phi
+      t = t + d_theta
+
+    return points
+
+  def _calculateArrayFactor(self, theta, phi, I, d, waveLength):
+    """ 
+    private: calculate the strength of a configuratio at angle theta/phi
+    on a square plane antenna array.
+    
+    I:  2D array of amplitudes of each element in square array
+    d:  2D array of phases of each element in square array
+      **Must have dimensions self.antennaGridSize
+    
+    return: scalar ArrayFactor (not normalized)
+    """
+
+    dist = self.antennaSpacing #TODO this formula's units and my units don't line up. Fix
+    k = 2 * pi / waveLength # k = wave numer
+    
+    cumulativeAF = 0
+    for n in range(0, self.antennaGridSize[0]):
+      for m in range(0, self.antennaGridSize[1]):
+        #exponential term to calculate AF
+        cumulativeAF += I[n][m] * exp(1j *(d[n][m] + 
+          k*dist*n*sin(theta)*cos(phi) + 
+          k*dist*m*sin(theta)*sin(phi)))
+
+    return cumulativeAF
 
   ###Helper-funciton-land
   def _radiansToAwmf0108(self, rads):
