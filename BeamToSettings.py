@@ -11,6 +11,8 @@
 #-------------------------------------------------------------------------------
 
 from math import sin, cos, atan, pow, e, pi, radians, trunc, degrees
+from cmath import exp
+
 class BeamDefinition:
   """ Calculates AWMF phase settings from beam definition
   
@@ -51,7 +53,7 @@ class BeamDefinition:
 
     #Calculated awmf0108 settings... calculate when needed
     self.phaseSettings = []
-    self gainSettings = []
+    self.gainSettings = []
 
   def getPhaseSettings(self):
     """
@@ -68,7 +70,7 @@ class BeamDefinition:
                 [ [1, 2, 3, 4]]
     """
     #if they've already been calculated, don't redo the work
-    if len(self.phaseSettings > 0):
+    if len(self.phaseSettings) > 0:
       return self.phaseSettings
 
     k = 2 * pi / (self.waveLength) # wave number
@@ -134,13 +136,13 @@ class BeamDefinition:
     """
     self.antennaGridSize['x'] = gridX
     self.antennaGridSize['y'] = gridY
-    self.antennaSpacing  d
+    self.antennaSpacing  = spacing
 
     #force recalulation of gain and phase settings
     self.phaseSettings = []
     self.gainSettings = []
     return
-    
+
   ###Helper-funciton-land
   def _radiansToAwmf0108(self, rads):
     """
@@ -171,24 +173,24 @@ def test():
   #----------------------------------
   ## Basic tests to see different outputs
   b1 = BeamDefinition(15, 20, w, 1) 
-  d1 = b1.maxArrayFactor()
+  d1 = b1.getPhaseSettings()
   print "BeamDefinition(15, 20, w, 1) "
   print d1.__str__() + "\n"
 
   b2 = BeamDefinition(15, -20, w, 1) 
-  d2 = b2.maxArrayFactor()
+  d2 = b2.getPhaseSettings()
   print "BeamDefinition(15, -20, w, 1) "
   print d2.__str__()  + "\n"
 
   b3 = BeamDefinition(-10, -120, w, 1) 
-  d3 = b3.maxArrayFactor()
+  d3 = b3.getPhaseSettings()
   print "BeamDefinition(-10, -120, w, 1) "
   print d3.__str__()  + "\n"
 
   #--------------------------------------
   ##with 0 and 0 you'd expect even phase offset
   bUniform = BeamDefinition(0, 0, w, 1)
-  dU, x = bUniform.maxArrayFactor()
+  dU = bUniform.getPhaseSettings()
   print "BeamDefinition(0, 0, w, 1)"
   print dU.__str__()  + "\n"
 
