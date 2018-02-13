@@ -34,20 +34,22 @@ class BeamDefinition:
     A.maxArrayFactor()
       [[x, x],[x, x]], maxAf """
 
-    self.theta = radians(theta) #math module functions use radians
+    self.theta = radians(theta) #internal angles are all radians
     self.phi = radians(phi)
     self.beamStrength = beamStrength
     self.waveLength = waveLength
 
     #AWMF-0108 constants
     self.phaseControlRange = 32
-    self.gainControlRange = 32
     self.phaseControlMax = 2 * pi; #radians
-    self.gainControlMax = 1; #???TODO check units on this
+    self.gainControlRange = 32
+    self.gainControlStep = 1 #dB of attenuation per A value
+    self.gainControlMaxRx = 28 #dB
+    self.gainControlMaxTx = 26 #dB
 
-    #Antenna parameters
+    #default antenna parameters
     self.antennaGridSize = (2, 2) # (x, y)
-    self.antennaSpacing = 5 * pow(10,3) #TODO check if this is correct
+    self.antennaSpacing = 5.4 * pow(10,-3) #space between the center of antennas (meters)
 
     #Calculated awmf0108 settings... calculate when needed
     self.phaseSettings = []
@@ -78,13 +80,13 @@ class BeamDefinition:
     p=self.phi
     t=self.theta 
     ew_angle = atan( sin(p) * sin(t) / cos(t) )
-    nw_angle = atan( cos(p) * sin(t) / cos(t) )
+    ns_angle = atan( cos(p) * sin(t) / cos(t) )
 
     d = self.antennaSpacing
 
     ##calculate offsets between elements    
-    ew_phaseOffset = -k * d * sin(ew_angle);
-    ns_phaseOffset = -k * d * sin(nw_angle);
+    ew_phaseOffset = -k * d * sin(ew_angle)
+    ns_phaseOffset = -k * d * sin(ns_angle)
 
     ##Calculate offsets for each element
     #inifialize offset list with zeros
@@ -193,7 +195,13 @@ class BeamDefinition:
     #fix to be in range between 0 and 2pi radians
     fixed = rads % (2*pi)
 
-    return trunc(self._roundToNearest(fixed, interval) / interval);
+    val = trunc(self._roundToNearest(fixed, interval) / interval);
+
+    #fix to prevent from returning 32 instead of 0
+    if val == self.phaseControlRange:
+      val = 0
+
+    return val
 
   def _roundToNearest(self, x, multiple):
     """
@@ -201,6 +209,15 @@ class BeamDefinition:
       credit to stackOverflow
     """
     return multiple * round( float(x) / multiple)
+
+
+##Test 
+def unCheckedTestCase(t, p, w, i):
+  b1 = BeamDefinition(t, p, w, i) 
+  d1 = b1.getPhaseSettings()
+  print "BeamDefinition(" + t.__str__() + ", " \
+   + p.__str__() + ", " + w.__str__() + ", " + i.__str__() + ") "
+  print d1.__str__() + "\n"
 
 def test():
   """Test harness for this module """
@@ -211,26 +228,20 @@ def test():
 
   #----------------------------------
   ## Basic tests to see different outputs
-  b1 = BeamDefinition(15, 20, w, 1) 
-  d1 = b1.getPhaseSettings()
-  print "BeamDefinition(15, 20, w, 1) "
-  print d1.__str__() + "\n"
+  unCheckedTestCase(30, 90, w, 1)
+  unCheckedTestCase(15, 90, w, 1)
+  
+  unCheckedTestCase(-30, -90, w, 1)
+  unCheckedTestCase(-30, -90, w, 1)
 
-  b2 = BeamDefinition(15, -20, w, 1) 
-  d2 = b2.getPhaseSettings()
-  print "BeamDefinition(15, -20, w, 1) "
-  print d2.__str__()  + "\n"
-
-  b3 = BeamDefinition(-10, -120, w, 1) 
-  d3 = b3.getPhaseSettings()
-  print "BeamDefinition(-10, -120, w, 1) "
-  print d3.__str__()  + "\n"
+  unCheckedTestCase(15, 0, w, 1)
+  unCheckedTestCase(15, 180, w, 1)
 
   #--------------------------------------
   ##with 0 and 0 you'd expect even phase offset
   bUniform = BeamDefinition(0, 0, w, 1)
   dU = bUniform.getPhaseSettings()
-  print "BeamDefinition(0, 0, w, 1)"
+  print "BeamDefinition(0, 0, w, 1): w= " + w.__str__()
   print dU.__str__()  + "\n"
 
   assert dU[0][0] == dU[0][1] == dU[1][0] == dU[1][1]
@@ -244,3 +255,4 @@ if __name__ == '__main__':
   t2 = time()
   tt = t2 - t1
   print "Total time elapsed: " + tt.__str__() + "s"
+
