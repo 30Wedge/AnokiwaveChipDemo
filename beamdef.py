@@ -219,7 +219,7 @@ def unCheckedTestCase(t, p, w, i):
    + p.__str__() + ", " + w.__str__() + ", " + i.__str__() + ") "
   print d1.__str__() + "\n"
 
-def test():
+def testBeamDefinition():
   """Test harness for this module """
   #Does some test calculations to make sure the module functions
   f = 28 * pow(10,9) #29GHz
