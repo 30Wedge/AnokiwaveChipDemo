@@ -48,7 +48,8 @@ class BeamDefinition:
     self.gainControlMaxTx = 26 #dB
 
     #default antenna parameters
-    self.antennaGridSize = (2, 2) # (x, y)
+    self.antennaGridSize = (2, 2) # (x_dimension, y_dimension)
+    self.antennaInvert = [[True, False], [True, False]]
     self.antennaSpacing = 5.4 * pow(10,-3) #space between the center of antennas (meters)
 
     #Calculated awmf0108 settings... calculate when needed
@@ -66,7 +67,7 @@ class BeamDefinition:
                 [ [NW , NE],
                   [SW , SE]]
 
-                ex. 1x4:
+                ex. 4x1:
                 [ [1, 2, 3, 4]]
     """
     #if they've already been calculated, don't redo the work
@@ -91,7 +92,7 @@ class BeamDefinition:
     ##Calculate offsets for each element
     #inifialize offset list with zeros
     offsets = [ [0 for x in range(self.antennaGridSize[0])] for y in range(self.antennaGridSize[1])]
-    for i in range(0, self.antennaGridSize[0]):
+    for i in range(0, self.antennaGridSize[1]): # i = numrows = y dimension
       # add ns offset between rows
       if i == 0:
         offsets[0][0] = 0
@@ -99,9 +100,15 @@ class BeamDefinition:
         offsets[i][0] = offsets[i-1][0] + ns_phaseOffset
       
       # add ew offset between columns
-      for j in range(1, self.antennaGridSize[1]):
+      for j in range(1, self.antennaGridSize[0]): # j = numcols = x dimension
         offsets[i][j] = offsets[i][j - 1] + ew_phaseOffset
 
+    #add phase flip
+    for i in range(0, self.antennaGridSize[1]):
+      for j in range(0, self.antennaGridSize[0]):
+        if self.antennaInvert[i][j]:
+          offsets[i][j] += pi
+          
     #normalize the offset array to settings
     n_offsets = map(lambda x: map(lambda y: self._radiansToAwmf0108(y), x), offsets) 
     
@@ -123,12 +130,13 @@ class BeamDefinition:
 
     return self.gainSettings
 
-  def loadNewAntennaParameters(self, gridX, gridY, spacing):
+  def setAntenna(self, gridSize, invertPattern, spacing):
     """ 
       Replaces the default antenna parameters with ones specified by the user.
     """
-    self.antennaGridSize = (gridX, gridY)
+    self.antennaGridSize = (gridSize[0], gridSize[1])
     self.antennaSpacing  = spacing
+    self.antennaInvert = invertPattern
 
     #force recalulation of gain and phase settings
     self.phaseSettings = []
@@ -211,14 +219,23 @@ class BeamDefinition:
     return multiple * round( float(x) / multiple)
 
 
+
+
+
+################################################################################
 ##Test 
 def unCheckedTestCase(t, p, w, i):
   b1 = BeamDefinition(t, p, w, i) 
   d1 = b1.getPhaseSettings()
   print "BeamDefinition(" + t.__str__() + ", " \
    + p.__str__() + ", " + w.__str__() + ", " + i.__str__() + ") "
-  print d1.__str__() + "\n"
+  print "2x2\t" + d1.__str__()
+  
+  b1.setAntenna( (4,1), [[ True, False, True, False]],5.4 * pow(10,-3))
+  d1 = b1.getPhaseSettings()
+  print "1x4\t" + d1.__str__() + "\n"
 
+  
 def testBeamDefinition():
   """Test harness for this module """
   #Does some test calculations to make sure the module functions
@@ -236,22 +253,28 @@ def testBeamDefinition():
 
   unCheckedTestCase(15, 0, w, 1)
   unCheckedTestCase(15, 180, w, 1)
+  #--------------------------------------
 
   #--------------------------------------
-  ##with 0 and 0 you'd expect even phase offset
-  bUniform = BeamDefinition(0, 0, w, 1)
-  dU = bUniform.getPhaseSettings()
-  print "BeamDefinition(0, 0, w, 1): w= " + w.__str__()
-  print dU.__str__()  + "\n"
+  ##Tests to run in the anechoic chamber:
+  print("Anechoic chamber candidates:\n\n\n")
+  unCheckedTestCase(0, 0, w, 1)
+  unCheckedTestCase(0, 90, w, 1)
 
-  assert dU[0][0] == dU[0][1] == dU[1][0] == dU[1][1]
+  unCheckedTestCase(30, 90, w, 1) 
+  unCheckedTestCase(20, 90, w, 1) 
+  unCheckedTestCase(10, 90, w, 1)
+  unCheckedTestCase(-10, 90, w, 1)
+  unCheckedTestCase(-20, 90, w, 1)
+  unCheckedTestCase(-30, 90, w, 1) 
+  
   #TODO Create some test cases with other values that you can assert
 
 
 if __name__ == '__main__':
   from time import time
   t1 = time()
-  test()
+  testBeamDefinition()
   t2 = time()
   tt = t2 - t1
   print "Total time elapsed: " + tt.__str__() + "s"
