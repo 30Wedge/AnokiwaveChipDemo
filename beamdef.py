@@ -12,6 +12,8 @@
 
 from math import sin, cos, atan, pow, e, pi, radians, trunc, degrees
 from cmath import exp
+import yaml
+
 
 class BeamDefinition:
   """ Calculates AWMF phase settings from beam definition
@@ -22,11 +24,18 @@ class BeamDefinition:
   #speed of light
   C = 299792458
 
-  def __init__(self, theta, phi, waveLength, beamStrength=None):
+  #quadrant indexes
+  NW = "NW"
+  SW = "SW"
+  SE = "SE"
+  NE = "NE"
+
+  def __init__(self, theta, phi, waveLength, phaseCalFile="phaseCal.yaml", beamStrength=None):
     """Inits the object with polar coordinate input 
     theta           polar angle offset in degrees
     phi             azimuth angle offset in degrees
     waveLength      ...
+    phaseCalFile    yaml file for calibrating the phase offset 
     beamStrength    useless for now. leave blank.
 
     A = BeamDefinition(theta, phi, wavelength) 
@@ -48,7 +57,16 @@ class BeamDefinition:
     self.gainControlMaxTx = 26 #dB
 
     #default antenna parameters
-    self.antennaGridSize = (2, 2) # (x_dimension, y_dimension)
+    #antenna grid - says where each radiating element sits
+    #            ex. 2x2:
+    #            [ [NW , NE],
+    #              [SW , SE]]
+    #
+    #            ex. 4x1:
+    #            [ [NE, NW, SE, SW]]
+    self.antennaGrid = [[NW, NE], [SW, SE]] 
+    #self.antennaGrid = [[NE, NW, SE, SW]] # (x_dimension, y_dimension)
+
     self.antennaInvert = [[True, False], [True, False]]
     self.antennaSpacing = 5.4 * pow(10,-3) #space between the center of antennas (meters)
 
@@ -56,19 +74,18 @@ class BeamDefinition:
     self.phaseSettings = []
     self.gainSettings = []
 
+    #Calibration settings for this particular loadout. Fill now
+    self.phaseCal = self.loadPhaseCal(phaseCalFile)
+
+
   def getPhaseSettings(self):
     """
       returns:  array containing the phase offset for each antenna 
                 to point at the specified theta/phi direction in awmf-0108 settings
                 
-                returns an xdim by ydim array of the phase settings
+                returns a 1x4 array with settings for - NE-SE-SW-NW
 
-                ex. 2x2:
-                [ [NW , NE],
-                  [SW , SE]]
 
-                ex. 4x1:
-                [ [1, 2, 3, 4]]
     """
     #if they've already been calculated, don't redo the work
     if len(self.phaseSettings) > 0:
@@ -91,8 +108,8 @@ class BeamDefinition:
 
     ##Calculate offsets for each element
     #inifialize offset list with zeros
-    offsets = [ [0 for x in range(self.antennaGridSize[0])] for y in range(self.antennaGridSize[1])]
-    for i in range(0, self.antennaGridSize[1]): # i = numrows = y dimension
+    offsets = [ [0 for x in range(len(self.antennaGrid))] for y in range(len(self.antennaGrid[0])]
+    for i in range(0, len(self.antennaGrid[0]): # i = numrows of antenna
       # add ns offset between rows
       if i == 0:
         offsets[0][0] = 0
@@ -100,21 +117,30 @@ class BeamDefinition:
         offsets[i][0] = offsets[i-1][0] + ns_phaseOffset
       
       # add ew offset between columns
-      for j in range(1, self.antennaGridSize[0]): # j = numcols = x dimension
+      for j in range(1, len(self.antennaGrid): # j = numcols = x dimension
         offsets[i][j] = offsets[i][j - 1] + ew_phaseOffset
 
     #add phase flip
-    for i in range(0, self.antennaGridSize[1]):
-      for j in range(0, self.antennaGridSize[0]):
+    for i in range(0, len(self.antennaGrid[0])):
+      for j in range(0, len(self.antennaGrid)):
         if self.antennaInvert[i][j]:
           offsets[i][j] += pi
-          
-    #normalize the offset array to settings
-    n_offsets = map(lambda x: map(lambda y: self._radiansToAwmf0108(y), x), offsets) 
-    
-    self.phaseSettings = n_offsets
+    #Changes offsets from a 2d array to a flat dictionary indexed by quadrant.
+    #I'm sorry for writing it this way
+      #how it works - 1 flatten antennaGrid and offsets with that list comprehension
+      #               2 zip the flattened list into paired tuples
+      #               3 make a dictionary from the tuples & call it d_offsets
+    d_offsets = dict(zip( [j for i in self.antennaGrid for j in i], [j for i in offsets for j in i]))
 
-    return n_offsets
+    n_offsets = [ _applyCalibration(x, d_offsets[x], self.phaseCal) for x in [NE, SE, SW, NW]]
+
+    #convert the offset array to settings
+    s_offsets = map(lambda x: map(lambda y: self._radiansToAwmf0108(y), x), n_offsets) 
+    
+    self.phaseSettings = s_offsets
+    
+    return s_offsets  
+
 
   def getGainSettings(self):
     """ 
@@ -124,17 +150,18 @@ class BeamDefinition:
     if len(self.gainSettings > 0) :
       return self.gainSettings
 
-    xdim = self.antennaGridSize[0]
-    ydim = self.antennaGridSize[1]
+    xdim = len(self.antennaGrid)
+    ydim = len(self.antennaGrid[0])
     self.gainSettings = [[1 for x in range(xdim)] for y in range(ydim)]
 
     return self.gainSettings
 
-  def setAntenna(self, gridSize, invertPattern, spacing):
+
+  def setAntenna(self, grid, invertPattern, spacing):
     """ 
       Replaces the default antenna parameters with ones specified by the user.
     """
-    self.antennaGridSize = (gridSize[0], gridSize[1])
+    self.antennaGrid = grid 
     self.antennaSpacing  = spacing
     self.antennaInvert = invertPattern
 
@@ -142,6 +169,7 @@ class BeamDefinition:
     self.phaseSettings = []
     self.gainSettings = []
     return
+
 
   def visualiseGrid(self, d_theta, d_phi):
     """
@@ -167,6 +195,8 @@ class BeamDefinition:
 
     return points
 
+
+  #########Helper-funciton-land
   def _calculateArrayFactor(self, theta, phi, I, d, waveLength):
     """ 
     private: calculate the strength of a configuratio at angle theta/phi
@@ -174,17 +204,17 @@ class BeamDefinition:
     
     I:  2D array of amplitudes of each element in square array
     d:  2D array of phases of each element in square array
-      **Must have dimensions self.antennaGridSize
+      **Must have dimensions self.antennaGrid
     
     return: scalar ArrayFactor (not normalized)
     """
 
-    dist = self.antennaSpacing #TODO this formula's units and my units don't line up. Fix
+    dist = self.antennaSpacing 
     k = 2 * pi / waveLength # k = wave numer
     
     cumulativeAF = 0
-    for n in range(0, self.antennaGridSize[0]):
-      for m in range(0, self.antennaGridSize[1]):
+    for n in range(0, len(self.antennaGrid):
+      for m in range(0, len(self.antennaGrid[0]):
         #exponential term to calculate AF
         cumulativeAF += I[n][m] * exp(1j *(d[n][m] + 
           k*dist*n*sin(theta)*cos(phi) + 
@@ -192,7 +222,20 @@ class BeamDefinition:
 
     return cumulativeAF
 
-  ###Helper-funciton-land
+
+  def _applyCalibration(self, quadrant, setting, calMap):
+  """ Applies a calibration to a single setting _if the calibration map exists_
+      and returns the result"""
+    if calMap: #only if a structure was loaded
+      #setting probably won't appear in the calMap. Find the nearest thing that does
+      closetSetting = min(calMap[quadrant].keys, key=lambda x:abs(x - setting))
+      print("Calibration -- Using: " + closetSetting.__str__() + " instead of " + setting.__str__())
+
+      return setting - calMap[quadrant][closetSetting] 
+    else:
+      return setting 
+
+
   def _radiansToAwmf0108(self, rads):
     """
       rads: angle in radians to convert
@@ -211,6 +254,7 @@ class BeamDefinition:
 
     return val
 
+
   def _roundToNearest(self, x, multiple):
     """
       round x to the nearest multiple of _multiple_
@@ -219,11 +263,42 @@ class BeamDefinition:
     return multiple * round( float(x) / multiple)
 
 
+  def loadPhaseCal(self, phaseCalFile):
+    """ 
+      Load a phase calibration yaml file into a data structure 
+      return the data structure
 
+      2-level dictionary structure:
+        cal[X][p] = phase offset error for quadrant X at phase setting p
+
+      Cal file is expected as follows --
+      NW: {
+          0 : 3.3
+          1 : 2.1
+          ...
+          }
+      QUADRANT: {
+        PHASE_SETTING: [Measurement - Setting]
+      }
+
+    """
+    #load the dictionary raw
+    try:
+      with open(phaseCalFile, 'r') as stream:
+        dataMap = yaml.safe_load(stream)
+        print("Phase calibration file loaded successfully")
+        #TODO validate dataMap
+    except FileNotFoundError:
+      print("No phase calibration file found.")
+      return None
+
+    return dataMap
 
 
 ################################################################################
 ##Test 
+
+
 def unCheckedTestCase(t, p, w, i):
   b1 = BeamDefinition(t, p, w, i) 
   d1 = b1.getPhaseSettings()
@@ -235,7 +310,7 @@ def unCheckedTestCase(t, p, w, i):
   d1 = b1.getPhaseSettings()
   print "1x4\t" + d1.__str__() + "\n"
 
-  
+
 def testBeamDefinition():
   """Test harness for this module """
   #Does some test calculations to make sure the module functions
