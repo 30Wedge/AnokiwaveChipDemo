@@ -233,10 +233,12 @@ class BeamDefinition:
     """
     if calMap: #only if a structure was loaded
       #setting probably won't appear in the calMap. Find the nearest thing that does
-      closetSetting = min(calMap[quadrant].keys, key=lambda x:abs(x - setting))
-      print("Calibration -- Using: " + closetSetting.__str__() + " instead of " + setting.__str__())
-
-      return setting - calMap[quadrant][closetSetting] 
+      closestSetting = min(calMap[quadrant].keys(), key=lambda x:abs(x - setting))
+      if closestSetting != setting:
+        print("Calibration -- Using: " + closestSetting.__str__() + " instead of " + setting.__str__())
+      print("Calibration -- Applying: " + calMap[quadrant][closestSetting].__str__() + " to " + quadrant)
+      
+      return (setting - calMap[quadrant][closestSetting]) % 32
     else:
       return setting 
 
@@ -290,7 +292,6 @@ class BeamDefinition:
     """
     #load the dictionary raw
     try:
-      print(phaseCalFile)
       with open(phaseCalFile, "r") as stream:
         dataMap = yaml.safe_load(stream)
         print("Phase calibration file loaded successfully")
@@ -306,8 +307,8 @@ class BeamDefinition:
 ##Test 
 
 
-/def unCheckedTestCase(t, p, w, i):
-  b1 = BeamDefinition(t, p, w)  #TODO pass illumination or phaseCal 
+def unCheckedTestCase(t, p, w, i):
+  b1 = BeamDefinition(t, p, w, phaseCalFile="0phaseCal.yaml") 
   d1 = b1.getPhaseSettings()
   print "BeamDefinition(" + t.__str__() + ", " \
    + p.__str__() + ", " + w.__str__() + ", " + i.__str__() + ") "
@@ -349,8 +350,12 @@ def testBeamDefinition():
   unCheckedTestCase(-10, 90, w, 1)
   unCheckedTestCase(-20, 90, w, 1)
   unCheckedTestCase(-30, 90, w, 1) 
+
+  ##Test phaseCal loading
+  b1 = BeamDefinition(0, 0, w, phaseCalFile="testPhaseCal.yaml")
+  d1 = b1.getPhaseSettings()
+  print "Funy cal: \t" + d1.__str__()
   
-  #TODO Create some test cases with other values that you can assert
 
 
 if __name__ == '__main__':

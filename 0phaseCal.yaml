@@ -1,0 +1,10 @@
+#Fake cal data to test the yaml parser
+#Everything is 0. Nothing should happen
+NW: 
+  0: 0
+NE:
+  0: 0
+SW:
+  0: 0
+SE:
+  0: 0
