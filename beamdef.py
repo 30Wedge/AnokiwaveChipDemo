@@ -14,21 +14,22 @@ from math import sin, cos, atan, pow, e, pi, radians, trunc, degrees
 from cmath import exp
 import yaml
 
+#quadrant indexes
+NW = "NW"
+SW = "SW"
+SE = "SE"
+NE = "NE"
 
 class BeamDefinition:
   """ Calculates AWMF phase settings from beam definition
   
   Give it spherical coordinates, and it can return the AWMF-0108 phase settings
   """
-
   #speed of light
   C = 299792458
 
-  #quadrant indexes
-  NW = "NW"
-  SW = "SW"
-  SE = "SE"
-  NE = "NE"
+  
+
 
   def __init__(self, theta, phi, waveLength, phaseCalFile="phaseCal.yaml", beamStrength=None):
     """Inits the object with polar coordinate input 
@@ -108,8 +109,8 @@ class BeamDefinition:
 
     ##Calculate offsets for each element
     #inifialize offset list with zeros
-    offsets = [ [0 for x in range(len(self.antennaGrid))] for y in range(len(self.antennaGrid[0])]
-    for i in range(0, len(self.antennaGrid[0]): # i = numrows of antenna
+    offsets = [ [0 for x in range(len(self.antennaGrid[0]))] for y in range(len(self.antennaGrid))]
+    for i in range(0, len(self.antennaGrid)): # i = numrows of antenna
       # add ns offset between rows
       if i == 0:
         offsets[0][0] = 0
@@ -117,14 +118,15 @@ class BeamDefinition:
         offsets[i][0] = offsets[i-1][0] + ns_phaseOffset
       
       # add ew offset between columns
-      for j in range(1, len(self.antennaGrid): # j = numcols = x dimension
+      for j in range(1, len(self.antennaGrid[0])): # j = numcols = x dimension
         offsets[i][j] = offsets[i][j - 1] + ew_phaseOffset
 
     #add phase flip
-    for i in range(0, len(self.antennaGrid[0])):
-      for j in range(0, len(self.antennaGrid)):
+    for i in range(0, len(self.antennaGrid)):
+      for j in range(0, len(self.antennaGrid[0])):
         if self.antennaInvert[i][j]:
           offsets[i][j] += pi
+
     #Changes offsets from a 2d array to a flat dictionary indexed by quadrant.
     #I'm sorry for writing it this way
       #how it works - 1 flatten antennaGrid and offsets with that list comprehension
@@ -132,14 +134,15 @@ class BeamDefinition:
       #               3 make a dictionary from the tuples & call it d_offsets
     d_offsets = dict(zip( [j for i in self.antennaGrid for j in i], [j for i in offsets for j in i]))
 
-    n_offsets = [ _applyCalibration(x, d_offsets[x], self.phaseCal) for x in [NE, SE, SW, NW]]
+    #convert the offset dictionary to settings from phase angle
+    s_offsets = {key: self._radiansToAwmf0108(val) for key, val in d_offsets.items()}
 
-    #convert the offset array to settings
-    s_offsets = map(lambda x: map(lambda y: self._radiansToAwmf0108(y), x), n_offsets) 
+    #apply phase calibration and convert to a plain array
+    n_offsets = [ self._applyCalibration(x, s_offsets[x], self.phaseCal) for x in [NE, SE, SW, NW]]
+
+    self.phaseSettings = n_offsets
     
-    self.phaseSettings = s_offsets
-    
-    return s_offsets  
+    return n_offsets
 
 
   def getGainSettings(self):
@@ -213,8 +216,8 @@ class BeamDefinition:
     k = 2 * pi / waveLength # k = wave numer
     
     cumulativeAF = 0
-    for n in range(0, len(self.antennaGrid):
-      for m in range(0, len(self.antennaGrid[0]):
+    for n in range(0, len(self.antennaGrid)):
+      for m in range(0, len(self.antennaGrid[0])):
         #exponential term to calculate AF
         cumulativeAF += I[n][m] * exp(1j *(d[n][m] + 
           k*dist*n*sin(theta)*cos(phi) + 
@@ -224,8 +227,10 @@ class BeamDefinition:
 
 
   def _applyCalibration(self, quadrant, setting, calMap):
-  """ Applies a calibration to a single setting _if the calibration map exists_
-      and returns the result"""
+    """ 
+    Applies a calibration to a single setting _if the calibration map exists_
+    and returns the result
+    """
     if calMap: #only if a structure was loaded
       #setting probably won't appear in the calMap. Find the nearest thing that does
       closetSetting = min(calMap[quadrant].keys, key=lambda x:abs(x - setting))
@@ -269,26 +274,28 @@ class BeamDefinition:
       return the data structure
 
       2-level dictionary structure:
-        cal[X][p] = phase offset error for quadrant X at phase setting p
+        cal[X][p] = settingoffset error for quadrant X at phase setting p
 
       Cal file is expected as follows --
       NW: {
-          0 : 3.3
-          1 : 2.1
+          0: 3
+          1: -2
           ...
           }
       QUADRANT: {
         PHASE_SETTING: [Measurement - Setting]
       }
 
+    #All units are in settings.
     """
     #load the dictionary raw
     try:
-      with open(phaseCalFile, 'r') as stream:
+      print(phaseCalFile)
+      with open(phaseCalFile, "r") as stream:
         dataMap = yaml.safe_load(stream)
         print("Phase calibration file loaded successfully")
         #TODO validate dataMap
-    except FileNotFoundError:
+    except IOError: #Python2 doesn't have FileNotFoundError
       print("No phase calibration file found.")
       return None
 
@@ -299,14 +306,14 @@ class BeamDefinition:
 ##Test 
 
 
-def unCheckedTestCase(t, p, w, i):
-  b1 = BeamDefinition(t, p, w, i) 
+/def unCheckedTestCase(t, p, w, i):
+  b1 = BeamDefinition(t, p, w)  #TODO pass illumination or phaseCal 
   d1 = b1.getPhaseSettings()
   print "BeamDefinition(" + t.__str__() + ", " \
    + p.__str__() + ", " + w.__str__() + ", " + i.__str__() + ") "
   print "2x2\t" + d1.__str__()
   
-  b1.setAntenna( (4,1), [[ True, False, True, False]],5.4 * pow(10,-3))
+  b1.setAntenna( [[NE, NW, SE, SW]], [[ True, False, True, False]],5.4 * pow(10,-3))
   d1 = b1.getPhaseSettings()
   print "1x4\t" + d1.__str__() + "\n"
 
