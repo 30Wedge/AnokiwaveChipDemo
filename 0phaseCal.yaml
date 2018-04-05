@@ -1,5 +1,13 @@
 #Fake cal data to test the yaml parser
 #Everything is 0. Nothing should happen
+#      Cal file structured as follows --
+#      NW: 
+#          0: 3
+#          1: -2
+#          ...
+# 
+#      QUADRANT: 
+#        PHASE_SETTING: [Measurement - Setting]
 NW: 
   0: 0
 NE:

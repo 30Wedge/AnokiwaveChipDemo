@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-------------------------------------------------------------------------------
 # Name:        Beam Definition
-# Purpose:     Convert from polar coordinates
+# Purpose:     Convert from polar coordinates to awmf-0108 settings
 #
 # Author:      Andy MacGregor 
 #
@@ -234,9 +234,12 @@ class BeamDefinition:
     if calMap: #only if a structure was loaded
       #setting probably won't appear in the calMap. Find the nearest thing that does
       closestSetting = min(calMap[quadrant].keys(), key=lambda x:abs(x - setting))
-      if closestSetting != setting:
-        print("Calibration -- Using: " + closestSetting.__str__() + " instead of " + setting.__str__())
-      print("Calibration -- Applying: " + calMap[quadrant][closestSetting].__str__() + " to " + quadrant)
+
+      #Only talk about the calibration if its being used
+      if calMap[quadrant][closestSetting] != 0:
+        if closestSetting != setting:
+          print("Calibration -- Using: " + closestSetting.__str__() + " instead of " + setting.__str__())
+        print("Calibration -- Applying: " + calMap[quadrant][closestSetting].__str__() + " to " + quadrant)
       
       return (setting - calMap[quadrant][closestSetting]) % 32
     else:
@@ -293,9 +296,7 @@ class BeamDefinition:
     #load the dictionary raw
     try:
       with open(phaseCalFile, "r") as stream:
-        dataMap = yaml.safe_load(stream)
-        print("Phase calibration file loaded successfully")
-        #TODO validate dataMap
+        dataMap = yaml.safe_load(stream) #just assume its correct
     except IOError: #Python2 doesn't have FileNotFoundError
       print("No phase calibration file found.")
       return None
@@ -341,8 +342,7 @@ def testBeamDefinition():
   #--------------------------------------
   ##Tests to run in the anechoic chamber:
   print("Anechoic chamber candidates:\n\n\n")
-  unCheckedTestCase(0, 0, w, 1)
-  unCheckedTestCase(0, 90, w, 1)
+  unCheckedTestCase(0, 90, w, 1) #phi=90 = inline with the 1x4 array
 
   unCheckedTestCase(30, 90, w, 1) 
   unCheckedTestCase(20, 90, w, 1) 
@@ -354,7 +354,7 @@ def testBeamDefinition():
   ##Test phaseCal loading
   b1 = BeamDefinition(0, 0, w, phaseCalFile="testPhaseCal.yaml")
   d1 = b1.getPhaseSettings()
-  print "Funy cal: \t" + d1.__str__()
+  print "Funny cal: \t" + d1.__str__()
   
 
 
