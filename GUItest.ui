@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>813</width>
-    <height>628</height>
+    <width>698</width>
+    <height>444</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,123 +16,99 @@
   <widget class="QGroupBox" name="groupBox">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>10</y>
+     <x>480</x>
+     <y>60</y>
      <width>181</width>
-     <height>161</height>
+     <height>131</height>
     </rect>
    </property>
    <property name="title">
     <string>Beam Direction</string>
    </property>
-   <widget class="QDoubleSpinBox" name="theta">
+   <widget class="QWidget" name="formLayoutWidget">
     <property name="geometry">
      <rect>
-      <x>90</x>
-      <y>20</y>
-      <width>61</width>
-      <height>22</height>
+      <x>9</x>
+      <y>10</y>
+      <width>161</width>
+      <height>81</height>
      </rect>
     </property>
-    <property name="minimum">
-     <double>-360.000000000000000</double>
-    </property>
-    <property name="maximum">
-     <double>360.000000000000000</double>
-    </property>
-    <property name="singleStep">
-     <double>0.500000000000000</double>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label">
-    <property name="geometry">
-     <rect>
-      <x>40</x>
-      <y>20</y>
-      <width>46</width>
-      <height>13</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>theta</string>
-    </property>
-   </widget>
-   <widget class="QDoubleSpinBox" name="phi">
-    <property name="geometry">
-     <rect>
-      <x>90</x>
-      <y>50</y>
-      <width>61</width>
-      <height>22</height>
-     </rect>
-    </property>
-    <property name="minimum">
-     <double>-360.000000000000000</double>
-    </property>
-    <property name="maximum">
-     <double>360.000000000000000</double>
-    </property>
-    <property name="singleStep">
-     <double>0.500000000000000</double>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label_2">
-    <property name="geometry">
-     <rect>
-      <x>40</x>
-      <y>50</y>
-      <width>46</width>
-      <height>13</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>phi</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="label_3">
-    <property name="geometry">
-     <rect>
-      <x>20</x>
-      <y>90</y>
-      <width>61</width>
-      <height>16</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>wavelength</string>
-    </property>
-   </widget>
-   <widget class="QDoubleSpinBox" name="waveLength">
-    <property name="geometry">
-     <rect>
-      <x>90</x>
-      <y>80</y>
-      <width>62</width>
-      <height>22</height>
-     </rect>
-    </property>
-    <property name="minimumSize">
-     <size>
-      <width>62</width>
-      <height>0</height>
-     </size>
-    </property>
-    <property name="minimum">
-     <double>26.500000000000000</double>
-    </property>
-    <property name="maximum">
-     <double>30.000000000000000</double>
-    </property>
-    <property name="singleStep">
-     <double>0.100000000000000</double>
-    </property>
+    <layout class="QFormLayout" name="formLayout">
+     <item row="0" column="0">
+      <widget class="QLabel" name="labelTheta">
+       <property name="text">
+        <string>theta</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QDoubleSpinBox" name="theta">
+       <property name="minimum">
+        <double>-360.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>360.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.500000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="labelPhi">
+       <property name="text">
+        <string>phi</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QDoubleSpinBox" name="phi">
+       <property name="minimum">
+        <double>-360.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>360.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.500000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="labelWavelength">
+       <property name="text">
+        <string>wavelength</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QDoubleSpinBox" name="waveLength">
+       <property name="minimumSize">
+        <size>
+         <width>62</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="minimum">
+        <double>26.500000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>30.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </widget>
    <widget class="QPushButton" name="BeamDef">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>130</y>
-      <width>75</width>
+      <x>10</x>
+      <y>100</y>
+      <width>161</width>
       <height>23</height>
      </rect>
     </property>
@@ -140,6 +116,16 @@
      <string>BeamDef</string>
     </property>
    </widget>
+  </widget>
+  <widget class="QOpenGLWidget" name="glViewer">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>451</width>
+     <height>411</height>
+    </rect>
+   </property>
   </widget>
  </widget>
  <resources/>
