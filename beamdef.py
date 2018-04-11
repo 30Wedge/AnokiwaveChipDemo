@@ -311,13 +311,13 @@ class BeamDefinition:
 def unCheckedTestCase(t, p, w, i):
   b1 = BeamDefinition(t, p, w, phaseCalFile="0phaseCal.yaml") 
   d1 = b1.getPhaseSettings()
-  print "BeamDefinition(" + t.__str__() + ", " \
-   + p.__str__() + ", " + w.__str__() + ", " + i.__str__() + ") "
-  print "2x2\t" + d1.__str__()
+  print ("BeamDefinition(" + t.__str__() + ", " \
+   + p.__str__() + ", " + w.__str__() + ", " + i.__str__() + ") ")
+  print( "2x2\t" + d1.__str__())
   
   b1.setAntenna( [[NE, NW, SE, SW]], [[ True, False, True, False]],5.4 * pow(10,-3))
   d1 = b1.getPhaseSettings()
-  print "1x4\t" + d1.__str__() + "\n"
+  print("1x4\t" + d1.__str__() + "\n")
 
 
 def testBeamDefinition():
@@ -354,7 +354,7 @@ def testBeamDefinition():
   ##Test phaseCal loading
   b1 = BeamDefinition(0, 0, w, phaseCalFile="testPhaseCal.yaml")
   d1 = b1.getPhaseSettings()
-  print "Funny cal: \t" + d1.__str__()
+  print( "Funny cal: \t" + d1.__str__())
   
 
 
@@ -364,5 +364,6 @@ if __name__ == '__main__':
   testBeamDefinition()
   t2 = time()
   tt = t2 - t1
-  print "Total time elapsed: " + tt.__str__() + "s"
+  print("Total time elapsed: " + tt.__str__() + "s")
 
+1

@@ -345,7 +345,7 @@ class SPI(object):
 
         rData = []
         for pIdx in idxRead:
-            #print pIdx
+            #print( pIdx)
             fRet = self._lspi.ni845xSpiScriptExtractReadDataSize(self._cHdlScr, c.c_uint32(pIdx), c.byref(nRead))
 
             cRdata = (c.c_uint8 * nRead.value)()
@@ -705,7 +705,7 @@ class SPI(object):
         else:
             Nclks = addr
 
-        print Nclks
+        print( Nclks)
 
         # Reset script
         f.append(self._lspi.ni845xSpiScriptReset(self._cHdlScr))
@@ -791,9 +791,9 @@ class SPI(object):
 # ------------------------------------------------------------------------------
 def main():
 
-    print '**********************************************'
-    print '***   Test Harness for NI8452io Class      ***'
-    print '**********************************************'
+    print( '**********************************************')
+    print( '***   Test Harness for NI8452io Class      ***')
+    print( '**********************************************')
 
     spiLoopTest  = False
     gpioLoopTest = False
@@ -801,20 +801,20 @@ def main():
     # ==========================================================================
     # --- Initialization ---
     spi = SPI()
-    print 'Class version:\t', spi.ioGetVersion()
+    print( 'Class version:\t', spi.ioGetVersion())
 
     fRet = spi.ioOpen()
-    print 'ioOpen():   \t{0}'.format(fRet)
+    print( 'ioOpen():   \t{0}'.format(fRet))
     if fRet!=0:
         exit(0)
 
     fRet = spi.ioSetConfig(spiClk=1000000)
-    print 'ioSetConfig():\t{0}'.format(fRet)
+    print( 'ioSetConfig():\t{0}'.format(fRet))
     if fRet!=0:
         exit(0)
 
     fRet= spi.ioInit()
-    print 'ioInit():     \t{0}\n'.format(fRet)
+    print( 'ioInit():     \t{0}\n'.format(fRet))
     if fRet!=0:
         exit(0)
 
@@ -822,66 +822,66 @@ def main():
     # ==========================================================================
     # --- Standard SPI write LOOP TEST ----
     if spiLoopTest:
-        print '*** SPI LOOP TEST ***'
+        print( '*** SPI LOOP TEST ***')
         for p in range(230):
             wArr=range(p,p+27)
             rData = spi.ioWriteSPI(wArr)
             if wArr != rData:
-                print 'MOSI/MISO Error @ {0}'.format(p)
-                print rData
-        print '***    COMPLETE   ***\n'
+                print( 'MOSI/MISO Error @ {0}'.format(p))
+                print( rData)
+        print( '***    COMPLETE   ***\n')
 
     # ==========================================================================
     # --- 5-WIRE SPI LOOP TEST: 4 BIT WORD ----
     if spiLoopTest:
-        print '*** SPI2 LOOP TEST: 4bit word ***'
+        print( '*** SPI2 LOOP TEST: 4bit word ***')
         for p in range(10):
             wArr=range(p,p+7)
             rData = spi.ioWriteSPI2(wArr, 4)
             if wArr != rData:
-                print 'MOSI/MISO Error @ {0}'.format(p)
-                print rData
-        print 'Last iter:\t', rData
-        print '***         COMPLETE            ***\n'
+                print( 'MOSI/MISO Error @ {0}'.format(p))
+                print( rData)
+        print( 'Last iter:\t', rData)
+        print( '***         COMPLETE            ***\n')
 
     # ==========================================================================
     # --- 5-WIRE SPI LOOP TEST: 8 BIT WORD ----
     if spiLoopTest:
-        print '*** SPI2 LOOP TEST: 8bit word ***'
+        print( '*** SPI2 LOOP TEST: 8bit word ***')
         for p in range(247):
             wArr=range(p,p+10)
             rData = spi.ioWriteSPI2(wArr, 8)
             if wArr != rData:
-                print 'MOSI/MISO Error @ {0}'.format(p)
-                print rData
-        print 'Last iter:\t', rData
-        print '***         COMPLETE            ***\n'
+                print( 'MOSI/MISO Error @ {0}'.format(p))
+                print( rData)
+        print( 'Last iter:\t', rData)
+        print( '***         COMPLETE            ***\n')
 
     # ==========================================================================
     # --- 5-WIRE SPI LOOP TEST: 10 BIT WORD ----
     if spiLoopTest:
-        print '*** SPI2 LOOP TEST: 10bit word ***'
+        print( '*** SPI2 LOOP TEST: 10bit word ***')
         for p in range(1015):
             wArr=range(p,p+10)
             rData = spi.ioWriteSPI2(wArr, 10)
             if wArr != rData:
-                print 'MOSI/MISO Error @ {0}'.format(p)
-                print rData
-        print 'Last iter:\t', rData
-        print '***         COMPLETE            ***\n'
+                print( 'MOSI/MISO Error @ {0}'.format(p))
+                print( rData)
+        print( 'Last iter:\t', rData)
+        print( '***         COMPLETE            ***\n')
 
     # ==========================================================================
     # --- 5-WIRE SPI LOOP TEST: 12 BIT WORD ----
     if spiLoopTest:
-        print '*** SPI2 LOOP TEST: 12bit word ***'
+        print( '*** SPI2 LOOP TEST: 12bit word ***')
         for p in range(4079):
             wArr=range(p,p+18)
             rData = spi.ioWriteSPI2(wArr, 12)
             if wArr != rData:
-                print 'MOSI/MISO Error @ {0}'.format(p)
-                print rData
-        print 'Last iter:\t', rData
-        print '***         COMPLETE            ***\n'
+                print( 'MOSI/MISO Error @ {0}'.format(p))
+                print( rData)
+        print( 'Last iter:\t', rData)
+        print( '***         COMPLETE            ***\n')
 
     # ==========================================================================
     # --- DIO TEST: ATLAS EMULATION ----
@@ -889,34 +889,34 @@ def main():
         for idx in range(32):
             dVal=idx
             fRet = spi.ioWriteDIO(dVal)
-            print 'writeDIO\t{0}\t{1}'.format(fRet, hex(idx))
+            print( 'writeDIO\t{0}\t{1}'.format(fRet, hex(idx)))
             time.sleep(1)
 
     #fRet = spi.readDIO()
-    #print 'readDIO\t{0}'.format(fRet)
+    #print( 'readDIO\t{0}'.format(fRet))
 
 
     # ==========================================================================
     # --- ioReadSPI2() Test ---
     if False:
-        print 'ioReadSPI2() Test'
+        print( 'ioReadSPI2() Test')
         fRet = spi.ioReadSPI2(18,12)
-        print fRet
+        print( fRet)
 
     # ==========================================================================
     if False:
-        print '*** ioWriteRSPI() Testing ***'
+        print( '*** ioWriteRSPI() Testing ***')
         fRet, rDataIn, Nclks = spi.ioWriteRSPI([0x55,0xaa,0x55])
-        print rDataIn
+        print( rDataIn)
 
 
     # ==========================================================================
     if True:
-        print '*** Test Mercury FBS Pulsing ***'
+        print( '*** Test Mercury FBS Pulsing ***')
         spi.ioSetConfig(Vio=18, spiClk=10000)
         spi.ioInit()
         f = spi.ioWriteFBSmerc(7,4)
-        print f
+        print( f)
 
 
 
@@ -924,11 +924,11 @@ def main():
     # ==========================================================================
     # --- Set IO safe state ---
     fRet = spi.ioSafe()
-    print 'ioSafe():     \t{0}'.format(fRet)
+    print( 'ioSafe():     \t{0}'.format(fRet))
 
     # --- Close IO ---
     fRet = spi.ioClose(0)
-    print 'ioClose():    \t{0}'.format(fRet)
+    print( 'ioClose():    \t{0}'.format(fRet))
 
 
 if __name__ == '__main__':
