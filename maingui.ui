@@ -117,7 +117,7 @@
     </property>
    </widget>
   </widget>
-  <widget class="QOpenGLWidget" name="glViewer">
+  <widget class="QAntennaViewer" name="glViewer">
    <property name="geometry">
     <rect>
      <x>10</x>
@@ -127,7 +127,27 @@
     </rect>
    </property>
   </widget>
+  <widget class="QPushButton" name="programButton">
+   <property name="geometry">
+    <rect>
+     <x>490</x>
+     <y>310</y>
+     <width>161</width>
+     <height>111</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Send it</string>
+   </property>
+  </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QAntennaViewer</class>
+   <extends>QOpenGLWidget</extends>
+   <header location="global">qantennaviewer.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
