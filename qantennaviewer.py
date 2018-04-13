@@ -34,6 +34,9 @@ class QAntennaViewer(QOpenGLWidget):
         self.trolltechPurple = QColor.fromCmykF(0.39, 0.39, 0.0, 0.0)
         self.trolltechOrange = QColor.fromCmykF(0.39, 0.55, 0.88, 0.1)
 
+        self.substrateColor = QColor.fromCmykF(0.57, 0, 0.76, 0.77)
+        self.antennaColor = QColor.fromCmykF(0, 0.17, 0.93, 0.16)
+
     def getOpenglInfo(self):
         info = """
             Vendor: {0}
@@ -130,13 +133,41 @@ class QAntennaViewer(QOpenGLWidget):
 
         gl.glBegin(gl.GL_QUADS)
 
-        self.prism(0, 0, 0, 0.05, 0.06, 0.07)
+        #self.prism(0, 0, 0, 0.05, 0.06, 0.07)
+
+        m = 2.0
+        self.drawAntennaGrid( m*0.034, 2, 2, m* 0.05, m* 0.06)
 
         #End GL point list
         gl.glEnd()
         gl.glEndList()
 
         return genList
+
+    def drawAntennaGrid(self, spacing, dim_x, dim_y, patch_x, patch_y, sub_z=0.03):
+        """Draw some antennas"""
+
+        sub_x = (dim_x ) * spacing + (dim_x+1) *patch_x
+        sub_y = (dim_y ) * spacing + (dim_y+1)* patch_y
+
+        #Draw the substrate centered on the origin with back at z=0
+        self.setColor(self.substrateColor)
+        self.prism(-sub_x/2, -sub_y/2, 0, sub_x, sub_y, sub_z)
+
+        #draw patchAntennas
+        self.setColor(self.antennaColor)
+        #start drawing from -x, -y
+        space_x = spacing - patch_x
+        space_y = spacing - patch_y
+        start_x = -((dim_x*patch_x)/2 + ((dim_x -1) * spacing / 2))
+        start_y = -((dim_y*patch_y)/2 + ((dim_y -1) * spacing / 2))
+        for i in range(dim_x):
+            for j in range(dim_y):
+                x = start_x + i*(spacing + patch_x)
+                y = start_y + j*(spacing + patch_y)
+                self.prism(x, y, sub_z, patch_x, patch_y, sub_z/4)
+
+
 
     def prism(self, x1, y1, z1, x_len, y_len, z_len):
         """Draws a prism orthogonal to the coordinate system"""
@@ -152,16 +183,13 @@ class QAntennaViewer(QOpenGLWidget):
 
     def rect_x(self, x, y1, z1, y_len, z_len):
         """Defines a rectangle orthogonal to the x direction"""
-        self.setColor(self.trolltechGreen)
         self.quad_a(x, y1, z1, x, y1 + y_len, z1, x, y1 + y_len, z1 + z_len, x, y1, z1 + z_len)
 
     def rect_y(self, y, x1, z1, x_len, z_len):
-        self.setColor(self.trolltechRed)
         """Defines a rectangle orthogonal to the y direction"""
         self.quad_a(x1, y, z1, x1 + x_len, y, z1, x1 + x_len, y, z1 + z_len, x1, y, z1 + z_len)
 
     def rect_z(self, z, x1, y1, x_len, y_len):
-        self.setColor(self.trolltechBlue)
         """Defines a rectangle orthogonal to the z direction"""
         self.quad_a(x1, y1, z, x1 + x_len, y1, z, x1 + x_len, y1 + y_len, z, x1, y1 + y_len, z)
 
@@ -224,7 +252,7 @@ class Window(QWidget):
         self.ySlider.setValue(345 * 16)
         self.zSlider.setValue(0 * 16)
 
-        self.setWindowTitle("Hello GL")
+        self.setWindowTitle("QAntennaViewer")
 
     def createSlider(self):
         slider = QSlider(Qt.Vertical)
