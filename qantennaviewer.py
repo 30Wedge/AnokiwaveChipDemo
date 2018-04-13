@@ -8,7 +8,7 @@ from PyQt5.QtCore import pyqtSignal, QPoint, QSize, Qt
 from PyQt5.QtGui import QColor
 
 import OpenGL.GL as gl
-import OpenGL.GLU as glu
+#import OpenGL.GLU as glu
 
 class QAntennaViewer(QOpenGLWidget):
     """draws the antenna plus radiation pattern in this openGL widget
@@ -29,8 +29,10 @@ class QAntennaViewer(QOpenGLWidget):
         self.lastPos = QPoint()
 
         self.trolltechGreen = QColor.fromCmykF(0.40, 0.0, 1.0, 0.0)
+        self.trolltechRed = QColor.fromCmykF(0.0, 1.0, 1.0, 0.0)
+        self.trolltechBlue = QColor.fromCmykF(1.0, 1.0, 0.0, 0.0)
         self.trolltechPurple = QColor.fromCmykF(0.39, 0.39, 0.0, 0.0)
-        self.mysteryColor = QColor.fromCmykF(0.0, 0.6, 0.2, 0.0)
+        self.trolltechOrange = QColor.fromCmykF(0.39, 0.55, 0.88, 0.1)
 
     def getOpenglInfo(self):
         info = """
@@ -81,7 +83,7 @@ class QAntennaViewer(QOpenGLWidget):
         self.object = self.makeObject()
         gl.glShadeModel(gl.GL_FLAT)
         gl.glEnable(gl.GL_DEPTH_TEST)
-        gl.glEnable(gl.GL_CULL_FACE)
+        #gl.glEnable(gl.GL_CULL_FACE)
 
     def paintGL(self):
         gl.glClear(
@@ -128,29 +130,7 @@ class QAntennaViewer(QOpenGLWidget):
 
         gl.glBegin(gl.GL_QUADS)
 
-        xlen = 0.5
-        ylen = 0.6
-        zlen = 0.2
-
-        self.setColor(self.trolltechGreen.darker(250 + int(100 * xlen)))
-        
-        gl.glVertex4d(0, 0, 0, 1); #STart with the origin 
-        gl.glVertex4d(0, ylen, 0, 1);
-        gl.glVertex4d(xlen, ylen, 0, 1);
-        gl.glVertex4d(xlen, 0, 0, 1);
-
-        self.setColor(self.mysteryColor)
-        
-        gl.glVertex4d(0, 0, 0, 1); #start new face
-        gl.glVertex4d(0, 0, zlen, 1);
-        gl.glVertex4d(0, ylen, zlen, 1);
-        gl.glVertex4d(0, ylen, 0, 1);
-
-        gl.glVertex4d(0, 0, 0, 1); #start new face
-        gl.glVertex4d(xlen, 0, 0, 1);
-        gl.glVertex4d(xlen, 0, zlen, 1);
-        gl.glVertex4d(xlen, 0, 0, 1);
-
+        self.prism(0, 0, 0, 0.05, 0.06, 0.07)
 
         #End GL point list
         gl.glEnd()
@@ -158,26 +138,39 @@ class QAntennaViewer(QOpenGLWidget):
 
         return genList
 
-    def quad(self, x1, y1, x2, y2, x3, y3, x4, y4):
-        self.setColor(self.mysteryColor)
+    def prism(self, x1, y1, z1, x_len, y_len, z_len):
+        """Draws a prism orthogonal to the coordinate system"""
+        #x faces
+        self.rect_x(x1, y1, z1, y_len, z_len)
+        self.rect_x(x1 + x_len, y1, z1, y_len, z_len)
+        #y faces
+        self.rect_y(y1, x1, z1, x_len, z_len)
+        self.rect_y(y1 + y_len, x1, z1, x_len, z_len)
+        #z faces
+        self.rect_z(z1, x1, y1, x_len, y_len)
+        self.rect_z(z1 + z_len, x1, y1, x_len, y_len)
 
-        gl.glVertex3d(x1, y1, -0.05)
-        gl.glVertex3d(x2, y2, -0.05)
-        gl.glVertex3d(x3, y3, -0.05)
-        gl.glVertex3d(x4, y4, -0.05)
+    def rect_x(self, x, y1, z1, y_len, z_len):
+        """Defines a rectangle orthogonal to the x direction"""
+        self.setColor(self.trolltechGreen)
+        self.quad_a(x, y1, z1, x, y1 + y_len, z1, x, y1 + y_len, z1 + z_len, x, y1, z1 + z_len)
 
-        gl.glVertex3d(x4, y4, +0.05)
-        gl.glVertex3d(x3, y3, +0.05)
-        gl.glVertex3d(x2, y2, +0.05)
-        gl.glVertex3d(x1, y1, +0.05)
+    def rect_y(self, y, x1, z1, x_len, z_len):
+        self.setColor(self.trolltechRed)
+        """Defines a rectangle orthogonal to the y direction"""
+        self.quad_a(x1, y, z1, x1 + x_len, y, z1, x1 + x_len, y, z1 + z_len, x1, y, z1 + z_len)
 
-    def extrude(self, x1, y1, x2, y2):
-        self.setColor(self.trolltechGreen.darker(250 + int(100 * x1)))
+    def rect_z(self, z, x1, y1, x_len, y_len):
+        self.setColor(self.trolltechBlue)
+        """Defines a rectangle orthogonal to the z direction"""
+        self.quad_a(x1, y1, z, x1 + x_len, y1, z, x1 + x_len, y1 + y_len, z, x1, y1 + y_len, z)
 
-        gl.glVertex3d(x1, y1, +0.05)
-        gl.glVertex3d(x2, y2, +0.05)
-        gl.glVertex3d(x2, y2, -0.05)
-        gl.glVertex3d(x1, y1, -0.05)
+    def quad_a(self, x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4):
+        """exhaustively defines all 4 points of a quadrangle and draws it"""
+        gl.glVertex3d(x1, y1, z1)
+        gl.glVertex3d(x2, y2, z2)
+        gl.glVertex3d(x3, y3, z3)
+        gl.glVertex3d(x4, y4, z4) 
 
     def normalizeAngle(self, angle):
         while angle < 0:
