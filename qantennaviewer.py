@@ -21,7 +21,8 @@ class QAntennaViewer(QOpenGLWidget):
     def __init__(self, parent=None):
         super(QAntennaViewer, self).__init__(parent)
 
-        self.object = 0
+        self.substrate = 0
+        self.beamPattern = 0
         self.xRot = 0
         self.yRot = 0
         self.zRot = 0
@@ -36,6 +37,9 @@ class QAntennaViewer(QOpenGLWidget):
 
         self.substrateColor = QColor.fromCmykF(0.57, 0, 0.76, 0.77)
         self.antennaColor = QColor.fromCmykF(0, 0.17, 0.93, 0.16)
+
+        self.afPoints = [2.0] #test as 2.0 for scale
+        self.dirtyBeamPattern = False #if true, redraw
 
     def getOpenglInfo(self):
         info = """
@@ -60,6 +64,7 @@ class QAntennaViewer(QOpenGLWidget):
 
     def setXRotation(self, angle):
         angle = self.normalizeAngle(angle)
+        self.setAFPoints([4 * angle / (360 * 16)])
         if angle != self.xRot:
             self.xRot = angle
             self.xRotationChanged.emit(angle)
@@ -79,11 +84,20 @@ class QAntennaViewer(QOpenGLWidget):
             self.zRotationChanged.emit(angle)
             self.update()
 
+    def setAFPoints(self, afList):
+        """expects a list of (theta, phi, AF) points to plot 
+        this antenna's AF with"""
+        if afList != self.afPoints:
+            self.afPoints = afList
+            self.dirtyBeamPattern = True
+            self.update()
+
     def initializeGL(self):
         print(self.getOpenglInfo())
 
         self.setClearColor(self.trolltechPurple.darker())
-        self.object = self.makeObject()
+        self.substrate = self.makeSubstrate()
+        self.beamPattern = self.makeBeamPattern()
         gl.glShadeModel(gl.GL_FLAT)
         gl.glEnable(gl.GL_DEPTH_TEST)
         #gl.glEnable(gl.GL_CULL_FACE)
@@ -96,7 +110,10 @@ class QAntennaViewer(QOpenGLWidget):
         gl.glRotated(self.xRot / 16.0, 1.0, 0.0, 0.0)
         gl.glRotated(self.yRot / 16.0, 0.0, 1.0, 0.0)
         gl.glRotated(self.zRot / 16.0, 0.0, 0.0, 1.0)
-        gl.glCallList(self.object)
+        gl.glCallList(self.substrate)
+        if self.dirtyBeamPattern: #redraw if necessary
+            self.beamPattern = self.makeBeamPattern()
+        gl.glCallList(self.beamPattern)
 
     def resizeGL(self, width, height):
         side = min(width, height)
@@ -127,16 +144,32 @@ class QAntennaViewer(QOpenGLWidget):
 
         self.lastPos = event.pos()
 
-    def makeObject(self):
+    def makeBeamPattern(self):
+        genList = gl.glGenLists(2)
+        gl.glNewList(genList, gl.GL_COMPILE)
+
+        gl.glBegin(gl.GL_QUADS)
+
+        print ("makeBeamPattern")
+        #scale factor
+        m = self.afPoints[0]
+        self.drawAntennaGrid( m*0.034, 4, 1, m* 0.05, m* 0.06)
+        
+        #End GL point list
+        gl.glEnd()
+        gl.glEndList()
+
+        return genList
+
+    def makeSubstrate(self):
         genList = gl.glGenLists(1)
         gl.glNewList(genList, gl.GL_COMPILE)
 
         gl.glBegin(gl.GL_QUADS)
 
-        #self.prism(0, 0, 0, 0.05, 0.06, 0.07)
-
+        #scale factor
         m = 2.0
-        self.drawAntennaGrid( m*0.034, 2, 2, m* 0.05, m* 0.06)
+        self.drawAntennaGrid( m*0.034, 1, 4, m* 0.05, m* 0.06)
 
         #End GL point list
         gl.glEnd()
@@ -264,6 +297,9 @@ class Window(QWidget):
         slider.setTickPosition(QSlider.TicksRight)
 
         return slider
+
+    def beamPlotterTest(self):
+        pass 
 
 
 if __name__ == '__main__':
