@@ -128,7 +128,7 @@ class QAntennaViewer(QOpenGLWidget):
 
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
-        gl.glOrtho(-0.5, +0.5, +0.5, -0.5, 4.0, 15.0)
+        gl.glOrtho(-0.5, +0.5, +0.5, -0.5, 4.0, 15.0) #sets perspective matrix
         gl.glMatrixMode(gl.GL_MODELVIEW)
 
     def mousePressEvent(self, event):
@@ -156,9 +156,11 @@ class QAntennaViewer(QOpenGLWidget):
         gl.glBegin(gl.GL_QUADS)
 
         print ("makeBeamPattern")
+        ###Do better
+
         #scale factor
-        m = self.afPoints[0]
-        self.drawAntennaGrid( m*0.034, 4, 1, m* 0.05, m* 0.06)
+        #m = self.afPoints[0]
+        #self.drawAntennaGrid( m*0.034, 4, 1, m* 0.05, m* 0.06)
         
         #End GL point list
         gl.glEnd()
@@ -172,9 +174,11 @@ class QAntennaViewer(QOpenGLWidget):
 
         gl.glBegin(gl.GL_QUADS)
 
-        #scale factor
-        m = 2.0
-        self.drawAntennaGrid( m*0.034, 1, 4, m* 0.05, m* 0.06)
+        #m = scale factor
+        m = 0.02
+        #hardcode units match the hfss model in mm
+        self.drawAntennaGrid( m*5.4, 4, 1, m*3.4, m* 4.2, m*0.5)
+        #self.drawAntennaGrid( m*5.4, 2, 2, m*3.4, m* 4.2, m*0.5)
 
         #End GL point list
         gl.glEnd()
@@ -183,26 +187,30 @@ class QAntennaViewer(QOpenGLWidget):
         return genList
 
     def drawAntennaGrid(self, spacing, dim_x, dim_y, patch_x, patch_y, sub_z=0.03):
-        """Draw some antennas"""
+        """Draw some antennas based on params
+            units don't mean much
+        """
 
-        sub_x = (dim_x ) * spacing + (dim_x+1) *patch_x
-        sub_y = (dim_y ) * spacing + (dim_y+1)* patch_y
+        sub_x = dim_x * patch_x  + (dim_x + 0) * spacing
+        sub_y = dim_y * patch_y  + (dim_y + 1) * spacing
 
-        #Draw the substrate centered on the origin with back at z=0
+        ##Draw the substrate centered on the origin with back at z=0
         self.setColor(self.substrateColor)
         self.prism(-sub_x/2, -sub_y/2, 0, sub_x, sub_y, sub_z)
 
-        #draw patchAntennas
+        ##draw patchAntennas
         self.setColor(self.antennaColor)
+        #Figure out how to space patches
         #start drawing from -x, -y
-        space_x = spacing - patch_x
-        space_y = spacing - patch_y
-        start_x = -((dim_x*patch_x)/2 + ((dim_x -1) * spacing / 2))
-        start_y = -((dim_y*patch_y)/2 + ((dim_y -1) * spacing / 2))
+        space_x = spacing 
+        space_y = spacing 
+
+        start_x = -1 * ( ((dim_x-1)/2) * space_x  + patch_x/2)
+        start_y = -1 * ( ((dim_y-1)/2) * space_y + patch_y/2)
         for i in range(dim_x):
             for j in range(dim_y):
-                x = start_x + i*(spacing + patch_x)
-                y = start_y + j*(spacing + patch_y)
+                x = start_x + i*(space_x)
+                y = start_y + j*(space_y)
                 self.prism(x, y, sub_z, patch_x, patch_y, sub_z/4)
 
 
