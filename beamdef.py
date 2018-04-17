@@ -35,7 +35,7 @@ class BeamDefinition:
     """Inits the object with polar coordinate input 
     theta           polar angle offset in degrees
     phi             azimuth angle offset in degrees
-    waveLength      ...
+    waveLength      wavelength *in meters*
     phaseCalFile    yaml file for calibrating the phase offset 
     beamStrength    useless for now. leave blank.
 
@@ -144,13 +144,31 @@ class BeamDefinition:
     
     return n_offsets
 
+  def getSquarePhaseSettings(self):
+    """
+      Gets an array of phase settings as a 2D array - same mapping as self.antennaGrid
+      
+      Maps the information stored in self.phaseSettings to locations specified
+      by self.antennaGrid
+    """
+    
+    #make sure its calc'd 
+    if len(self.phaseSettings) == 0:
+      self.getPhaseSettings()
+
+    keys = [NE, SE, SW, NW]
+
+    d = dict(zip(keys, self.phaseSettings))
+    sq = [[d[k] for k in r] for r in self.antennaGrid]
+
+    return sq
 
   def getGainSettings(self):
     """ 
       Return gain settings for this configuration.
       As long as we're using uniform illumination, set it all to 1
     """
-    if len(self.gainSettings > 0) :
+    if len(self.gainSettings) > 0 :
       return self.gainSettings
 
     xdim = len(self.antennaGrid)
@@ -174,32 +192,57 @@ class BeamDefinition:
     return
 
 
-  def visualiseGrid(self, d_theta, d_phi):
+  def generateAllAF(self, n_theta=30, n_phi=30, normalized=True, absAf=True):
     """
-      d_theta: difference between AF test points (in degrees)
+      n_theta: resolution of display in points 
 
-      returns:  a list of tuples to graph (theta, phi, AF)
+      returns:  a ***sorted*** list of tuples to graph (theta, phi,  AF)
+        sorted by phi first then by theta, from least to greatest
+
+        AF is normalized to 1 by default
+        Only uses the magnitude component of the Af by default
+        
     """
     #iterate from theta = 0 to 180 and phi = 0 to 360 in increments of d_theta and d_phi
     t = 0
     p = 0
+    t_max = 180.0
+    p_max = 360.0
+
+    p_d = p_max / n_phi
+    t_d = t_max / n_theta
 
     points = []
-    while t < 180 :
-      while p < 180 :
+    
+    af_max = -1
+
+    while t < t_max :
+      while p < p_max :
         # calculate the Antenna Factor for this angle at these settings and add it
         # to the list
-        a = _calculateArrayFactor(radians(t), radians(p), 
-          self.getGainSettings(), self.getPhaseSettings(), self.waveLength);
+        a = self._calculateArrayFactor(radians(t), radians(p), self.getGainSettings(), self.getSquarePhaseSettings(), self.waveLength);
+
+        if absAf:
+          a = abs(a)
+
         points.append( (t, p, a) )
 
-        p = p + d_phi
-      t = t + d_theta
+        if abs(a) > abs(af_max):
+          af_max = a
 
-    return points
+        p = p + p_d
+      p = 0
+      t = t + t_d
 
+      
+
+    if normalized:
+      return [(t, p, a/abs(af_max)) for (t, p, a) in points] #divide all afs by af_max
+    else:
+      return points
 
   #########Helper-funciton-land
+
   def _calculateArrayFactor(self, theta, phi, I, d, waveLength):
     """ 
     private: calculate the strength of a configuratio at angle theta/phi
@@ -219,9 +262,9 @@ class BeamDefinition:
     for n in range(0, len(self.antennaGrid)):
       for m in range(0, len(self.antennaGrid[0])):
         #exponential term to calculate AF
-        cumulativeAF += I[n][m] * exp(1j *(d[n][m] + 
-          k*dist*n*sin(theta)*cos(phi) + 
-          k*dist*m*sin(theta)*sin(phi)))
+        costerm = k*dist*n*sin(theta)*cos(phi)
+        sinterm = k*dist*m*sin(theta)*sin(phi)
+        cumulativeAF += I[n][m] * exp(1j *(d[n][m] + costerm + sinterm))
 
     return cumulativeAF
 

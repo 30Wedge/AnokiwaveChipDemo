@@ -64,7 +64,7 @@ class QAntennaViewer(QOpenGLWidget):
 
     def setXRotation(self, angle):
         angle = self.normalizeAngle(angle)
-        self.setAFPoints([4 * angle / (360 * 16)])
+        #self.setAFPoints([4 * angle / (360 * 16)])
         if angle != self.xRot:
             self.xRot = angle
             self.xRotationChanged.emit(angle)
@@ -85,8 +85,11 @@ class QAntennaViewer(QOpenGLWidget):
             self.update()
 
     def setAFPoints(self, afList):
-        """expects a list of (theta, phi, AF) points to plot 
-        this antenna's AF with"""
+        """expects a list of sorted (theta, phi, AF) points to plot 
+            this antenna's AF
+
+            Aught to be sorted by phi, then theta, least to greatest
+            """
         if afList != self.afPoints:
             self.afPoints = afList
             self.dirtyBeamPattern = True
@@ -145,6 +148,8 @@ class QAntennaViewer(QOpenGLWidget):
         self.lastPos = event.pos()
 
     def makeBeamPattern(self):
+        """ Draws the beam pattern from self.afPoitns
+        """
         genList = gl.glGenLists(2)
         gl.glNewList(genList, gl.GL_COMPILE)
 
