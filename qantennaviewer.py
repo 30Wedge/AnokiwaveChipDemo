@@ -191,11 +191,15 @@ class QAntennaViewer(QOpenGLWidget):
 
                 #draw this patch
                 self.quad_a_3P(p1, p2, p3, p4)
+                
             #get that last patch in this row by wrapping it around to the beginning
-            #p1 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (phi)])
-            #p2 = self.Point3P(*self.afPoints[(theta + 1) * self.afNTheta + (phi)])
-            #p3 = self.Point3P(*self.afPoints[(theta + 1) * self.afNTheta + (0)])
-            #p4 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (0)])            
+            p1 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (phi + 1)])
+            p2 = self.Point3P(*self.afPoints[(theta + 1) * self.afNTheta + (phi + 1)])
+            p3 = self.Point3P(*self.afPoints[(theta + 1) * self.afNTheta + (0)])
+            p4 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (0)])
+            self.setColor(self.AfToColor(p3.r))
+            p1, p2, p3, p4 = [self.Point3P(p.theta, p.phi, m*p.r) for p in (p1,p2,p3,p4)]
+            self.quad_a_3P(p1, p2, p3, p4)
 
         #End GL point list
         gl.glEnd()
