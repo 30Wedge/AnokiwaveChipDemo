@@ -13,6 +13,7 @@
 from math import sin, cos, atan, pow, e, pi, radians, trunc, degrees
 from cmath import exp
 import yaml
+import copy
 
 #quadrant indexes
 NW = "NW"
@@ -34,8 +35,10 @@ class BeamDefinition:
   def __init__(self, theta, phi, waveLength, phaseCalFile="phaseCal.yaml", beamStrength=None):
     """Inits the object with polar coordinate input 
     theta           polar angle offset in degrees
+      0 degrees = broadside beam
     phi             azimuth angle offset in degrees
-    waveLength      ...
+      0 degrees = North
+    waveLength      wavelength *in meters*
     phaseCalFile    yaml file for calibrating the phase offset 
     beamStrength    useless for now. leave blank.
 
@@ -69,10 +72,12 @@ class BeamDefinition:
     #self.antennaGrid = [[NE, NW, SE, SW]] # (x_dimension, y_dimension)
 
     self.antennaInvert = [[True, False], [True, False]]
+    #self.antennaInvert = [[True, False, True, False]]
     self.antennaSpacing = 5.4 * pow(10,-3) #space between the center of antennas (meters)
 
     #Calculated awmf0108 settings... calculate when needed
     self.phaseSettings = []
+    self.phaseSettingsRaw = []
     self.gainSettings = []
 
     #Calibration settings for this particular loadout. Fill now
@@ -121,6 +126,9 @@ class BeamDefinition:
       for j in range(1, len(self.antennaGrid[0])): # j = numcols = x dimension
         offsets[i][j] = offsets[i][j - 1] + ew_phaseOffset
 
+    #will be used in generateAllAF
+    self.phaseSettingsRaw = copy.deepcopy(offsets)
+
     #add phase flip
     for i in range(0, len(self.antennaGrid)):
       for j in range(0, len(self.antennaGrid[0])):
@@ -144,13 +152,27 @@ class BeamDefinition:
     
     return n_offsets
 
+  def getRawPhaseSettings(self):
+    """
+      Gets an array of phase settings as a 2D array - same mapping as self.antennaGrid, in radians
+      Removes phase inverts to specified patches.
+
+      Maps the information stored in self.phaseSettings to locations specified
+      by self.antennaGrid
+    """
+    
+    #make sure its calc'd 
+    if len(self.phaseSettingsRaw) == 0:
+      self.getPhaseSettings()
+
+    return self.phaseSettingsRaw
 
   def getGainSettings(self):
     """ 
       Return gain settings for this configuration.
       As long as we're using uniform illumination, set it all to 1
     """
-    if len(self.gainSettings > 0) :
+    if len(self.gainSettings) > 0 :
       return self.gainSettings
 
     xdim = len(self.antennaGrid)
@@ -174,39 +196,66 @@ class BeamDefinition:
     return
 
 
-  def visualiseGrid(self, d_theta, d_phi):
+  def generateAllAF(self, n_theta=30, n_phi=30, normalized=True, absAf=True, backLobes=False):
     """
-      d_theta: difference between AF test points (in degrees)
+      n_theta: resolution of display in points 
 
-      returns:  a list of tuples to graph (theta, phi, AF)
+      returns:  a ***sorted*** list of tuples to graph (theta, phi,  AF) 
+          with units (radians, radians, unitless)
+        sorted by phi first then by theta, from least to greatest
+
+        AF is normalized to 1 by default
+        Only uses the magnitude component of the Af by default
+        backLobes -- set true if you want to see the pattern on the back of the antenna
+        
     """
     #iterate from theta = 0 to 180 and phi = 0 to 360 in increments of d_theta and d_phi
     t = 0
     p = 0
+    t_max = 180 if backLobes else 90
+    p_max = 360
+
+    p_d = p_max / n_phi
+    t_d = t_max / n_theta
 
     points = []
-    while t < 180 :
-      while p < 180 :
+    
+    af_max = -1
+
+    while t < t_max :
+      while p < p_max :
         # calculate the Antenna Factor for this angle at these settings and add it
         # to the list
-        a = _calculateArrayFactor(radians(t), radians(p), 
-          self.getGainSettings(), self.getPhaseSettings(), self.waveLength);
+        a = self._calculateArrayFactor(radians(t), radians(p), self.getGainSettings(), self.getRawPhaseSettings(), self.waveLength);
+
+        if absAf:
+          a = abs(a)
+
         points.append( (t, p, a) )
 
-        p = p + d_phi
-      t = t + d_theta
+        if abs(a) > abs(af_max):
+          af_max = a
 
-    return points
+        p = p + p_d
+      p = 0
+      t = t + t_d
+    
+    print(self.phaseSettingsRaw)
 
+    if normalized:
+      return [(t, p, a/abs(af_max)) for (t, p, a) in points] #divide all afs by af_max
+    else:
+      return points
 
   #########Helper-funciton-land
+
   def _calculateArrayFactor(self, theta, phi, I, d, waveLength):
     """ 
     private: calculate the strength of a configuratio at angle theta/phi
     on a square plane antenna array.
     
-    I:  2D array of amplitudes of each element in square array
-    d:  2D array of phases of each element in square array
+    I:  2D array of amplitudes of each element in square array (scale from 0 to 1.0)
+    d:  2D array of phases of each element in square array (radians)
       **Must have dimensions self.antennaGrid
     
     return: scalar ArrayFactor (not normalized)
@@ -219,9 +268,9 @@ class BeamDefinition:
     for n in range(0, len(self.antennaGrid)):
       for m in range(0, len(self.antennaGrid[0])):
         #exponential term to calculate AF
-        cumulativeAF += I[n][m] * exp(1j *(d[n][m] + 
-          k*dist*n*sin(theta)*cos(phi) + 
-          k*dist*m*sin(theta)*sin(phi)))
+        costerm = k*dist*n*sin(theta)*cos(phi)
+        sinterm = k*dist*m*sin(theta)*sin(phi)
+        cumulativeAF += I[n][m] * exp(1j *(d[n][m] + costerm + sinterm))
 
     return cumulativeAF
 
@@ -264,6 +313,23 @@ class BeamDefinition:
 
     return val
 
+  def _Awmf0108ToRadians(self, awmf):
+    """
+      rads: angle in radians to convert
+      return: phase setting in awmf-0108 format
+    """
+    interval = self.phaseControlMax / self.phaseControlRange
+    
+    #fix to be in range between 0 and 2pi radians
+    fixed = rads % (2*pi)
+
+    val = trunc(self._roundToNearest(fixed, interval) / interval);
+
+    #fix to prevent from returning 32 instead of 0
+    if val == self.phaseControlRange:
+      val = 0
+
+    return val
 
   def _roundToNearest(self, x, multiple):
     """
@@ -311,13 +377,13 @@ class BeamDefinition:
 def unCheckedTestCase(t, p, w, i):
   b1 = BeamDefinition(t, p, w, phaseCalFile="0phaseCal.yaml") 
   d1 = b1.getPhaseSettings()
-  print "BeamDefinition(" + t.__str__() + ", " \
-   + p.__str__() + ", " + w.__str__() + ", " + i.__str__() + ") "
-  print "2x2\t" + d1.__str__()
+  print ("BeamDefinition(" + t.__str__() + ", " \
+   + p.__str__() + ", " + w.__str__() + ", " + i.__str__() + ") ")
+  print( "2x2\t" + d1.__str__())
   
   b1.setAntenna( [[NE, NW, SE, SW]], [[ True, False, True, False]],5.4 * pow(10,-3))
   d1 = b1.getPhaseSettings()
-  print "1x4\t" + d1.__str__() + "\n"
+  print("1x4\t" + d1.__str__() + "\n")
 
 
 def testBeamDefinition():
@@ -354,7 +420,7 @@ def testBeamDefinition():
   ##Test phaseCal loading
   b1 = BeamDefinition(0, 0, w, phaseCalFile="testPhaseCal.yaml")
   d1 = b1.getPhaseSettings()
-  print "Funny cal: \t" + d1.__str__()
+  print( "Funny cal: \t" + d1.__str__())
   
 
 
@@ -364,5 +430,6 @@ if __name__ == '__main__':
   testBeamDefinition()
   t2 = time()
   tt = t2 - t1
-  print "Total time elapsed: " + tt.__str__() + "s"
+  print("Total time elapsed: " + tt.__str__() + "s")
 
+1
