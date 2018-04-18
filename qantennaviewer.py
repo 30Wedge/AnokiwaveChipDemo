@@ -171,7 +171,7 @@ class QAntennaViewer(QOpenGLWidget):
 
 
         #scale factor
-        m = 0.4 #????
+        m = 0.5 #????
         
         #collect points from self.afPoints
         for theta in range(self.afNTheta - 1):
@@ -373,7 +373,7 @@ class Window(QWidget):
         self.setWindowTitle("QAntennaViewer")
 
         if beamViewTest:
-            b = BeamDefinition(20, 15, 0.01)
+            b = BeamDefinition(0, 0, 0.01)
             pts = b.generateAllAF()
             self.glWidget.setAFPoints(pts)
 

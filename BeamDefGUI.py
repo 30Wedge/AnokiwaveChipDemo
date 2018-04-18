@@ -24,6 +24,8 @@ class MyApp(QDialog, Ui_Dialog):
         super(MyApp, self).__init__()
         self.setupUi(self)
         self.BeamDef.clicked.connect(self.CalcBeamDef)
+        #self.resize(861, 561)
+        self.setFixedSize(self.size())
         #self.glViewer.quad(0,0,1,0,0,1,1,1)
         
     def CalculateWavelength(self):
