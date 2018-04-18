@@ -31,6 +31,7 @@
 #
 #-------------------------------------------------------------------------------
 import ctypes as c
+import sys
 
 class SPI(object):
     def __init__(self):
@@ -41,8 +42,16 @@ class SPI(object):
         self.__versStatus = 'Released'
 
         # cType parameters
-        self._cHdl      = c.c_ulong()
-        self._cHdlScr   = c.c_ulong()
+
+        #For whatever reason, when using python3, it uses 64 bit pointers
+        # but for python2, these functions use 32 bit pointers. (on my comp at least)
+        # adjust accordingly
+        if sys.version_info[0] == 3:
+            self._cHdl      = c.c_ulonglong()
+            self._cHdlScr   = c.c_ulonglong()
+        else:
+            self._cHdl      = c.c_ulong()
+            self._cHdlScr   = c.c_ulong()
         self._cDevStr   = c.create_string_buffer(255)
         self._cNdev     = c.c_uint32(0)
         self._cIOdataIn = c.c_uint8()
@@ -128,12 +137,12 @@ class SPI(object):
         # Open and get handle
         fRet = self._lspi.ni845xOpen(self._cDevStr, c.byref(self._cHdl))
         if fRet !=0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
             return fRet
 
         fRet = self._lspi.ni845xSpiScriptOpen(c.byref(self._cHdlScr))
         if fRet !=0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
             return fRet
 
         return fRet
@@ -149,7 +158,7 @@ class SPI(object):
         fRet = self._lspi.ni845xOpen(cResourceName, c.byref(self._cHdl))
 
         if fRet !=0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
             return fRet
 
         # If success then capture visaAddr
@@ -157,7 +166,7 @@ class SPI(object):
 
         fRet = self._lspi.ni845xSpiScriptOpen(c.byref(self._cHdlScr))
         if fRet !=0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
             return fRet
 
         return fRet
@@ -185,7 +194,7 @@ class SPI(object):
         intVio = int(self.Vio)
         fRet = self._lspi.ni845xSetIoVoltageLevel(self._cHdl, intVio)
         if fRet !=0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
             return fRet
         # Set DIO mapping
         # D7  D6  D5  D4  D3  D2  D1  D0
@@ -195,7 +204,7 @@ class SPI(object):
         fRet = self._lspi.ni845xDioSetPortLineDirectionMap(self._cHdl,
                                         self.__IOPORT, c.c_uint8(self._gpioDir))
         if fRet !=0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
         return fRet
 
 
@@ -207,21 +216,21 @@ class SPI(object):
         # Set GPIO to 0V
         fRet = self._lspi.ni845xDioWritePort(self._cHdl, self.__IOPORT, c.c_uint8(0))
         if fRet!=0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
             return fRet
 
         # Shut down SPI CS using SpiScript
         fRet = self._lspi.ni845xSpiScriptReset(self._cHdlScr)
         if fRet != 0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
             return fRet
         fRet = self._lspi.ni845xSpiScriptDisableSPI(self._cHdlScr)
         if fRet != 0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
             return fRet
         fRet = self._lspi.ni845xSpiScriptRun(self._cHdlScr, self._cHdl, self.__IOPORT)
         if fRet != 0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
             return fRet
 
         return fRet
@@ -239,11 +248,11 @@ class SPI(object):
         # Close handles cHdlScr & cHdl
         fRet = self._lspi.ni845xSpiScriptClose(self._cHdlScr)
         if fRet !=0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
             return fRet
         fRet = self._lspi.ni845xClose(self._cHdl)
         if fRet !=0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
 
         return fRet
 
@@ -258,7 +267,7 @@ class SPI(object):
         has already been applied to dioData. Returns 0/err code'''
         fRet = self._lspi.ni845xDioWritePort(self._cHdl, self.__IOPORT, c.c_uint8(dioData))
         if fRet != 0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
         return fRet
 
 
@@ -267,7 +276,7 @@ class SPI(object):
         '''Returns DIO data value (uint8) returned from GPIO lines'''
         fRet = self._lspi.ni845xDioReadPort(self._cHdl, self.__IOPORT, c.byref(self._cIOdataIn))
         if fRet != 0:
-            self.__errStatus(fRet)
+            print(self.__errStatus(fRet))
 
         rData = self._cIOdataIn.value
         return rData
@@ -589,15 +598,6 @@ class SPI(object):
 
         return wordArr
 
-
-
-
-
-
-
-
-
-
     # --------------------------- ioReadSPI2() ---------------------------------
     def ioReadSPI2(self, nWords=18, wordSize=12):
             '''Readback SPI data using AKW protocol.  Sets up necessary parameters using
@@ -783,7 +783,6 @@ class SPI(object):
         f.append(self._lspi.ni845xSpiScriptRun(self._cHdlScr, self._cHdl, 0))
 
         return sum(f)
-
 
 
 # ------------------------------------------------------------------------------
