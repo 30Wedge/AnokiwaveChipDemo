@@ -34,7 +34,9 @@ class BeamDefinition:
   def __init__(self, theta, phi, waveLength, phaseCalFile="phaseCal.yaml", beamStrength=None):
     """Inits the object with polar coordinate input 
     theta           polar angle offset in degrees
+      0 degrees = broadside beam
     phi             azimuth angle offset in degrees
+      0 degrees = North
     waveLength      wavelength *in meters*
     phaseCalFile    yaml file for calibrating the phase offset 
     beamStrength    useless for now. leave blank.
@@ -69,6 +71,7 @@ class BeamDefinition:
     #self.antennaGrid = [[NE, NW, SE, SW]] # (x_dimension, y_dimension)
 
     self.antennaInvert = [[True, False], [True, False]]
+    #self.antennaInvert = [[True, False, True, False]]
     self.antennaSpacing = 5.4 * pow(10,-3) #space between the center of antennas (meters)
 
     #Calculated awmf0108 settings... calculate when needed

@@ -1,5 +1,7 @@
 import sys
 import math
+from math import sin, cos, radians
+from collections import namedtuple
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QOpenGLWidget, QSlider,
@@ -12,11 +14,15 @@ import OpenGL.GL as gl
 
 class QAntennaViewer(QOpenGLWidget):
     """draws the antenna plus radiation pattern in this openGL widget
-      Barley forked from a hello world example
+      Barely forked from a hello world example
       """
     xRotationChanged = pyqtSignal(int)
     yRotationChanged = pyqtSignal(int)
     zRotationChanged = pyqtSignal(int)
+
+    #3D, cartesian / 3D, polar object types
+    Point3C = namedtuple('Point3C', ['x','y','z'])
+    Point3P = namedtuple('Point3P', ['theta','phi','r'])
 
     def __init__(self, parent=None):
         super(QAntennaViewer, self).__init__(parent)
@@ -38,7 +44,10 @@ class QAntennaViewer(QOpenGLWidget):
         self.substrateColor = QColor.fromCmykF(0.57, 0, 0.76, 0.77)
         self.antennaColor = QColor.fromCmykF(0, 0.17, 0.93, 0.16)
 
-        self.afPoints = [2.0] #test as 2.0 for scale
+        self.afPoints = [] 
+        self.afNPhi = 0     #number of phi points
+        self.afNTheta = 0   #number of theta points 
+
         self.dirtyBeamPattern = False #if true, redraw
 
     def getOpenglInfo(self):
@@ -84,14 +93,19 @@ class QAntennaViewer(QOpenGLWidget):
             self.zRotationChanged.emit(angle)
             self.update()
 
-    def setAFPoints(self, afList):
+    def setAFPoints(self, afList, n_phi=30, n_theta=30):
         """expects a list of sorted (theta, phi, AF) points to plot 
             this antenna's AF
+
+            n_phi = # of different values of phi
+            n_theta = # of different values of theta
 
             Aught to be sorted by phi, then theta, least to greatest
             """
         if afList != self.afPoints:
             self.afPoints = afList
+            self.afNPhi = n_phi
+            self.afNTheta = n_theta
             self.dirtyBeamPattern = True
             self.update()
 
@@ -148,25 +162,67 @@ class QAntennaViewer(QOpenGLWidget):
         self.lastPos = event.pos()
 
     def makeBeamPattern(self):
-        """ Draws the beam pattern from self.afPoitns
-        """
-        genList = gl.glGenLists(2)
+        """ Draws the beam pattern from self.afPoints 
+            Expec"""
+        genList = gl.glGenLists(1)
         gl.glNewList(genList, gl.GL_COMPILE)
 
         gl.glBegin(gl.GL_QUADS)
 
-        print ("makeBeamPattern")
-        ###Do better
 
         #scale factor
-        #m = self.afPoints[0]
-        #self.drawAntennaGrid( m*0.034, 4, 1, m* 0.05, m* 0.06)
+        m = 0.8 #????
         
+        #collect points from self.afPoints
+        for theta in range(self.afNTheta - 1):
+            for phi in range(self.afNPhi - 1):
+                
+                #corners in polar coordinate -- converting them to Point3P s
+                p1 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (phi + 0)])
+                p2 = self.Point3P(*self.afPoints[(theta + 1) * self.afNTheta + (phi + 0)])
+                p3 = self.Point3P(*self.afPoints[(theta + 1) * self.afNTheta + (phi + 1)])
+                p4 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (phi + 1)])
+
+                #key off of p3 arbitrarily
+                self.setColor(self.AfToColor(p3.r))
+
+                #scale AF with m
+                p1, p2, p3, p4 = [self.Point3P(p.theta, p.phi, m*p.r) for p in (p1,p2,p3,p4)]
+
+                #draw this patch
+                self.quad_a_3P(p1, p2, p3, p4)
+            #get that last patch in this row by wrapping it around to the beginning
+            #p1 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (phi)])
+            #p2 = self.Point3P(*self.afPoints[(theta + 1) * self.afNTheta + (phi)])
+            #p3 = self.Point3P(*self.afPoints[(theta + 1) * self.afNTheta + (0)])
+            #p4 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (0)])            
+
         #End GL point list
         gl.glEnd()
         gl.glEndList()
 
         return genList
+    
+    def P3toC3(self, pol):
+        """
+            polar to cartesian 
+
+            There's definitely some superior built-in way to do this.
+                I'll find it and figure that out if this turns out to be too slow
+
+            pol - Point3P(phi, theta, r)
+            return- Point3C(x,y,z)
+        """
+
+        x = sin(radians(pol.phi)) * sin(radians(pol.theta)) * pol.r
+        y = cos(radians(pol.phi)) * sin(radians(pol.theta)) * pol.r
+        z = cos(radians(pol.theta)) * pol.r 
+        return self.Point3C(x,y,z)
+
+    def AfToColor(self, af):
+        """0 <= af <= 1"""
+        h = 240 - (af * 240)
+        return QColor.fromHsl(h,200,182, .4)
 
     def makeSubstrate(self):
         genList = gl.glGenLists(1)
@@ -177,8 +233,8 @@ class QAntennaViewer(QOpenGLWidget):
         #m = scale factor
         m = 0.02
         #hardcode units match the hfss model in mm
-        self.drawAntennaGrid( m*5.4, 4, 1, m*3.4, m* 4.2, m*0.5)
-        #self.drawAntennaGrid( m*5.4, 2, 2, m*3.4, m* 4.2, m*0.5)
+        #self.drawAntennaGrid( m*5.4, 4, 1, m*3.4, m* 4.2, m*0.5)
+        self.drawAntennaGrid( m*5.4, 2, 2, m*3.4, m* 4.2, m*0.5)
 
         #End GL point list
         gl.glEnd()
@@ -227,6 +283,8 @@ class QAntennaViewer(QOpenGLWidget):
         self.rect_z(z1, x1, y1, x_len, y_len)
         self.rect_z(z1 + z_len, x1, y1, x_len, y_len)
 
+    ##Rect family -- draw rectangles orthogonal to a given dimension
+
     def rect_x(self, x, y1, z1, y_len, z_len):
         """Defines a rectangle orthogonal to the x direction"""
         self.quad_a(x, y1, z1, x, y1 + y_len, z1, x, y1 + y_len, z1 + z_len, x, y1, z1 + z_len)
@@ -238,6 +296,16 @@ class QAntennaViewer(QOpenGLWidget):
     def rect_z(self, z, x1, y1, x_len, y_len):
         """Defines a rectangle orthogonal to the z direction"""
         self.quad_a(x1, y1, z, x1 + x_len, y1, z, x1 + x_len, y1 + y_len, z, x1, y1 + y_len, z)
+
+    ##Quad family -- draw _a_rbitrary rectangles in space 
+
+    def quad_a_3P(self, p1, p2, p3, p4):
+        """Take Point3P namedtuples instead"""
+        self.quad_a_3C(self.P3toC3(p1), self.P3toC3(p2), self.P3toC3(p3), self.P3toC3(p4))
+
+    def quad_a_3C(self, p1, p2, p3, p4):
+        """Take Point3C namedtuples instead"""
+        self.quad_a(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z, p4.x, p4.y, p4.z)
 
     def quad_a(self, x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4):
         """exhaustively defines all 4 points of a quadrangle and draws it"""
@@ -271,7 +339,7 @@ class Window(QWidget):
     """Dummy container class for testing copy paste from 
       https://github.com/baoboa/pyqt5/tree/master/examples/opengl
       """
-    def __init__(self):
+    def __init__(self, beamViewTest=True):
         super(Window, self).__init__()
 
         self.glWidget = QAntennaViewer()
@@ -300,6 +368,11 @@ class Window(QWidget):
 
         self.setWindowTitle("QAntennaViewer")
 
+        if beamViewTest:
+            b = BeamDefinition(-10, 90, 0.01)
+            pts = b.generateAllAF()
+            self.glWidget.setAFPoints(pts)
+
     def createSlider(self):
         slider = QSlider(Qt.Vertical)
 
@@ -311,11 +384,10 @@ class Window(QWidget):
 
         return slider
 
-    def beamPlotterTest(self):
-        pass 
-
 
 if __name__ == '__main__':
+
+    from beamdef import BeamDefinition
 
     app = QApplication(sys.argv)
     window = Window()
