@@ -171,7 +171,7 @@ class QAntennaViewer(QOpenGLWidget):
 
 
         #scale factor
-        m = 0.8 #????
+        m = 0.4 #????
         
         #collect points from self.afPoints
         for theta in range(self.afNTheta - 1):
@@ -191,7 +191,7 @@ class QAntennaViewer(QOpenGLWidget):
 
                 #draw this patch
                 self.quad_a_3P(p1, p2, p3, p4)
-                
+
             #get that last patch in this row by wrapping it around to the beginning
             p1 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (phi + 1)])
             p2 = self.Point3P(*self.afPoints[(theta + 1) * self.afNTheta + (phi + 1)])
@@ -373,7 +373,7 @@ class Window(QWidget):
         self.setWindowTitle("QAntennaViewer")
 
         if beamViewTest:
-            b = BeamDefinition(-10, 90, 0.01)
+            b = BeamDefinition(20, 15, 0.01)
             pts = b.generateAllAF()
             self.glWidget.setAFPoints(pts)
 

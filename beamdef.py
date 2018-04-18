@@ -13,6 +13,7 @@
 from math import sin, cos, atan, pow, e, pi, radians, trunc, degrees
 from cmath import exp
 import yaml
+import copy
 
 #quadrant indexes
 NW = "NW"
@@ -76,6 +77,7 @@ class BeamDefinition:
 
     #Calculated awmf0108 settings... calculate when needed
     self.phaseSettings = []
+    self.phaseSettingsRaw = []
     self.gainSettings = []
 
     #Calibration settings for this particular loadout. Fill now
@@ -124,6 +126,9 @@ class BeamDefinition:
       for j in range(1, len(self.antennaGrid[0])): # j = numcols = x dimension
         offsets[i][j] = offsets[i][j - 1] + ew_phaseOffset
 
+    #will be used in generateAllAF
+    self.phaseSettingsRaw = copy.deepcopy(offsets)
+
     #add phase flip
     for i in range(0, len(self.antennaGrid)):
       for j in range(0, len(self.antennaGrid[0])):
@@ -147,24 +152,20 @@ class BeamDefinition:
     
     return n_offsets
 
-  def getSquarePhaseSettings(self):
+  def getRawPhaseSettings(self):
     """
-      Gets an array of phase settings as a 2D array - same mapping as self.antennaGrid
-      
+      Gets an array of phase settings as a 2D array - same mapping as self.antennaGrid, in radians
+      Removes phase inverts to specified patches.
+
       Maps the information stored in self.phaseSettings to locations specified
       by self.antennaGrid
     """
     
     #make sure its calc'd 
-    if len(self.phaseSettings) == 0:
+    if len(self.phaseSettingsRaw) == 0:
       self.getPhaseSettings()
 
-    keys = [NE, SE, SW, NW]
-
-    d = dict(zip(keys, self.phaseSettings))
-    sq = [[d[k] for k in r] for r in self.antennaGrid]
-
-    return sq
+    return self.phaseSettingsRaw
 
   def getGainSettings(self):
     """ 
@@ -195,22 +196,24 @@ class BeamDefinition:
     return
 
 
-  def generateAllAF(self, n_theta=30, n_phi=30, normalized=True, absAf=True):
+  def generateAllAF(self, n_theta=30, n_phi=30, normalized=True, absAf=True, backLobes=False):
     """
       n_theta: resolution of display in points 
 
-      returns:  a ***sorted*** list of tuples to graph (theta, phi,  AF)
+      returns:  a ***sorted*** list of tuples to graph (theta, phi,  AF) 
+          with units (radians, radians, unitless)
         sorted by phi first then by theta, from least to greatest
 
         AF is normalized to 1 by default
         Only uses the magnitude component of the Af by default
+        backLobes -- set true if you want to see the pattern on the back of the antenna
         
     """
     #iterate from theta = 0 to 180 and phi = 0 to 360 in increments of d_theta and d_phi
     t = 0
     p = 0
-    t_max = 180.0
-    p_max = 360.0
+    t_max = 180 if backLobes else 90
+    p_max = 360
 
     p_d = p_max / n_phi
     t_d = t_max / n_theta
@@ -223,7 +226,7 @@ class BeamDefinition:
       while p < p_max :
         # calculate the Antenna Factor for this angle at these settings and add it
         # to the list
-        a = self._calculateArrayFactor(radians(t), radians(p), self.getGainSettings(), self.getSquarePhaseSettings(), self.waveLength);
+        a = self._calculateArrayFactor(radians(t), radians(p), self.getGainSettings(), self.getRawPhaseSettings(), self.waveLength);
 
         if absAf:
           a = abs(a)
@@ -236,8 +239,8 @@ class BeamDefinition:
         p = p + p_d
       p = 0
       t = t + t_d
-
-      
+    
+    print(self.phaseSettingsRaw)
 
     if normalized:
       return [(t, p, a/abs(af_max)) for (t, p, a) in points] #divide all afs by af_max
@@ -251,8 +254,8 @@ class BeamDefinition:
     private: calculate the strength of a configuratio at angle theta/phi
     on a square plane antenna array.
     
-    I:  2D array of amplitudes of each element in square array
-    d:  2D array of phases of each element in square array
+    I:  2D array of amplitudes of each element in square array (scale from 0 to 1.0)
+    d:  2D array of phases of each element in square array (radians)
       **Must have dimensions self.antennaGrid
     
     return: scalar ArrayFactor (not normalized)
@@ -310,6 +313,23 @@ class BeamDefinition:
 
     return val
 
+  def _Awmf0108ToRadians(self, awmf):
+    """
+      rads: angle in radians to convert
+      return: phase setting in awmf-0108 format
+    """
+    interval = self.phaseControlMax / self.phaseControlRange
+    
+    #fix to be in range between 0 and 2pi radians
+    fixed = rads % (2*pi)
+
+    val = trunc(self._roundToNearest(fixed, interval) / interval);
+
+    #fix to prevent from returning 32 instead of 0
+    if val == self.phaseControlRange:
+      val = 0
+
+    return val
 
   def _roundToNearest(self, x, multiple):
     """
