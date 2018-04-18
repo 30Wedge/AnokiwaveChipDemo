@@ -35,9 +35,9 @@ class QAntennaViewer(QOpenGLWidget):
 
         self.lastPos = QPoint()
 
-        self.trolltechGreen = QColor.fromCmykF(0.40, 0.0, 1.0, 0.0)
-        self.trolltechRed = QColor.fromCmykF(0.0, 1.0, 1.0, 0.0)
-        self.trolltechBlue = QColor.fromCmykF(1.0, 1.0, 0.0, 0.0)
+        self.trolltechGreen = QColor.fromCmykF(0.40, 0.0, 1.0, 1)
+        self.trolltechRed = QColor.fromCmykF(0.0, 1.0, 1.0, 1)
+        self.trolltechBlue = QColor.fromCmykF(1.0, 1.0, 0.0, 1)
         self.trolltechPurple = QColor.fromCmykF(0.39, 0.39, 0.0, 0.0)
         self.trolltechOrange = QColor.fromCmykF(0.39, 0.55, 0.88, 0.1)
 
@@ -46,7 +46,8 @@ class QAntennaViewer(QOpenGLWidget):
 
         self.afPoints = [] 
         self.afNPhi = 0     #number of phi points
-        self.afNTheta = 0   #number of theta points 
+        self.afNTheta = 0   #number of theta points
+        self.beamTransparancy = 200
 
         self.dirtyBeamPattern = False #if true, redraw
 
@@ -117,6 +118,8 @@ class QAntennaViewer(QOpenGLWidget):
         self.beamPattern = self.makeBeamPattern()
         gl.glShadeModel(gl.GL_FLAT)
         gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glEnable(gl.GL_BLEND)
+        gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
         #gl.glEnable(gl.GL_CULL_FACE)
 
     def paintGL(self):
@@ -226,7 +229,7 @@ class QAntennaViewer(QOpenGLWidget):
     def AfToColor(self, af):
         """0 <= af <= 1"""
         h = 240 - (af * 240)
-        return QColor.fromHsl(h,200,182, .4)
+        return QColor.fromHsl(h,200,182, self.beamTransparancy)
 
     def makeSubstrate(self):
         genList = gl.glGenLists(1)
@@ -373,7 +376,7 @@ class Window(QWidget):
         self.setWindowTitle("QAntennaViewer")
 
         if beamViewTest:
-            b = BeamDefinition(0, 0, 0.01)
+            b = BeamDefinition(10, 10, 0.01)
             pts = b.generateAllAF()
             self.glWidget.setAFPoints(pts)
 
