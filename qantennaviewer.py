@@ -18,7 +18,7 @@ class QAntennaViewer(QOpenGLWidget):
       Barely forked from a hello world example
       """
     xRotationChanged = pyqtSignal(int)
-    yRotationChanged = pyqtSignal(int)
+    zoomChanged = pyqtSignal(int)
     zRotationChanged = pyqtSignal(int)
 
     #3D, cartesian / 3D, polar object types
@@ -35,7 +35,7 @@ class QAntennaViewer(QOpenGLWidget):
         self.currentSettings = 0
 
         self.xRot = 0
-        self.yRot = 0
+        self.zoom = 1.0
         self.zRot = 0
 
         self.lastPos = QPoint()
@@ -112,11 +112,11 @@ class QAntennaViewer(QOpenGLWidget):
               self.xRotationChanged.emit(self.normalizeAngle(angle))
             self.update()
 
-    def setYRotation(self, angle):
-        angle = self.normalizeAngle(angle)
-        if angle != self.yRot:
-            self.yRot = angle
-            self.yRotationChanged.emit(angle)
+    def setZoom(self, zoom):
+        z_c = zoom/100.0 + 0.1
+        if z_c != self.zoom:
+            self.zoom = z_c
+            self.zoomChanged.emit(zoom)
             self.update()
 
     def setZRotation(self, angle):
@@ -171,10 +171,12 @@ class QAntennaViewer(QOpenGLWidget):
         gl.glClear(
             gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glLoadIdentity()
-        gl.glTranslated(0.0, 0.0, -10.0)
+        gl.glTranslated(0.0, 0.0, -13.0)
         gl.glRotated(self.xRot / 16.0, 1.0, 0.0, 0.0)
-        gl.glRotated(self.yRot / 16.0, 0.0, 1.0, 0.0)
+        #gl.glRotated(self.yRot / 16.0, 0.0, 1.0, 0.0)
         gl.glRotated(self.zRot / 16.0, 0.0, 0.0, 1.0)
+        gl.glTranslated(0.0, 0.0, -0.3)
+        gl.glScale(self.zoom, self.zoom, self.zoom)
         gl.glCallList(self.substrate)
         if self.drawAxis:
             pass
@@ -210,9 +212,7 @@ class QAntennaViewer(QOpenGLWidget):
 
         if event.buttons() & Qt.LeftButton:
             self.setXRotation(self.xRot + 8 * dy)
-            #self.setYRotation(self.yRot + 8 * dx)
         elif event.buttons() & Qt.RightButton:
-            #self.setXRotation(self.xRot + 8 * dy)
             self.setZRotation(self.zRot + 8 * dx)
 
         self.lastPos = event.pos()
@@ -445,20 +445,20 @@ class Window(QWidget):
         self.xSlider = self.createSlider(min=-90, max = 90)
         self.zSlider = self.createSlider()
         #change to zoom slide
-        #self.ySlider = self.createSlider(max=180)
+        self.zoomSlider = self.createSlider(min=4, max= 9)
 
         self.xSlider.valueChanged.connect(self.glWidget.setXRotation)
         self.glWidget.xRotationChanged.connect(self.xSlider.setValue)
-        #self.ySlider.valueChanged.connect(self.glWidget.setYRotation)
-        #self.glWidget.yRotationChanged.connect(self.ySlider.setValue)
+        self.zoomSlider.valueChanged.connect(self.glWidget.setZoom)
+        self.glWidget.zoomChanged.connect(self.zoomSlider.setValue)
         self.zSlider.valueChanged.connect(self.glWidget.setZRotation)
         self.glWidget.zRotationChanged.connect(self.zSlider.setValue)
 
         mainLayout = QHBoxLayout()
         mainLayout.addWidget(self.glWidget)
         mainLayout.addWidget(self.xSlider)
-        #mainLayout.addWidget(self.ySlider)
         mainLayout.addWidget(self.zSlider)
+        mainLayout.addWidget(self.zoomSlider)
         self.setLayout(mainLayout)
 
         self.xSlider.setValue(45 * 16)
