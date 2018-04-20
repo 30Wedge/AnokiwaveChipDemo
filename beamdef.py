@@ -201,7 +201,7 @@ class BeamDefinition:
       n_theta: resolution of display in points 
 
       returns:  a ***sorted*** list of tuples to graph (theta, phi,  AF) 
-          with units (radians, radians, unitless)
+          with units (degrees, degrees, unitless)
         sorted by phi first then by theta, from least to greatest
 
         AF is normalized to 1 by default
