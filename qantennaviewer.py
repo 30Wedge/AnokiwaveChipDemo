@@ -268,63 +268,15 @@ class QAntennaViewer(QOpenGLWidget):
         y = cos(radians(pol.phi)) * sin(radians(pol.theta)) * pol.r
         z = cos(radians(pol.theta)) * pol.r 
         return self.Point3C(x,y,z)
-    def C3toP3(self, c, theta0=Point3C(0,0,1), phi0=Point3C(0,1,0),O0=Point3C(0,0,0)):
-      """ PointC3 to PointP3"""
-      t = self.angBtwC(c, theta0)
-      p = self.angBtwC(c, phi0)
-      r = self.subC(c, O0)
-      return self.Point3C(t, p, r)
-      assert(isinstance(c, self.Point3C))
-
-
-    def P3toNewP3(self, pP0, phi1, theta1, O1, phi0=Point3C(0,1,0), theta0=Point3C(0,0,1), O0=Point3C(0,0,0))
-      """ Converts P3 in one cordinate system to new coordinate system
-        pP0 - Polar point in old coordinate space
-
-        phi1 = C vector pointing in new phi=0 direction
-        theta1 = C vector pointing in new theta=0 direction
-        O1 = C vector definining new origin
-        
-        ...0 - definition of old coordinate space
-      """
-      pc =self.P3toC3(pP0)
-
-      #TODO shift coordinates properly
-      
-      t_new = self.angBtwC(pc, theta1)
-      phi_new = self.angBtwC(pc, phi1)
-      r_new = self.subC(pc, O1)
-      return self.PointP3(t_new, phi_new, r_new)
-
-    def angBtwC(self, C1, C2):
-      """gets the angle between C1 and C2"""
-      return acos( (self.dotC(C1, C2)) / (self.magC(C1) * self.magC(C2)))
-
-    def dotC(self, C1, C2):
-      return C1.x * C2.x + C1.y * C2.y + C1.z * C2.z
-
-    def normC(self, C):
-      """Normalization of C"""
-      a = self.magC(C)
-      return self.Point3C(C.x / a, C.y / a, C.z / a)
-
-    def subC(self, C1, C2):
-      return self.Point3C(C1.x - C2.x, C1.y - C2.y, C1.z - C2.z)
-
-    def magC(self, C):
-      """magnitude of Point3C"""
-      return math.sqrt(C.x **2 + C.y ** 2 + C.z ** 2)
-
+    
     def AfToColor(self, af):
         """0 <= af <= 1"""
         h = 240 - (af * 240)
         return QColor.fromHsl(h,200,182, self.beamTransparancy)
 
-    def drawVector(self, p3c_s, p3c_p, color, arrow=True, ar=.1, aw=10, a_n=4):
+    def drawVector(self, p3c_s, p3c_p, color):
         """Draw a vector from s to p.
           Assume you're working with GL_LINES
-
-          Optional parameters are for putting an arrow head at the end 
         """
 
         self.setColor(color)
@@ -333,25 +285,13 @@ class QAntennaViewer(QOpenGLWidget):
         self.glVertex_C3(p1)
         self.glVertex_C3(p2)
 
-        if arrow:
-          ptList = []
-          for i in range(a_n):
-            ptList.append(self.Point3P(aw, i * ((360)/a_n), p3c_p.r - ar))
-
-          print(len(ptList),ptList)
-          ptList = map(self.P3toC3,ptList )
-          c = zip(ptList, cycle([p2]))
-          for p in c:
-            self.glVertex_C3(p[0])
-            self.glVertex_C3(p[1])
-
     def makeCurrentSettings(self):
         """ Draw vector showing current input settings"""
         genList = gl.glGenLists(1)
         gl.glNewList(genList, gl.GL_COMPILE)
         gl.glBegin(gl.GL_LINES)
         #use afBeamScale for r
-        self.drawVector(self.Point3P(0,0,0), self.Point3P(self.csTheta,self.csPhi, 0.1 + self.csBeamScale * self.afBeamScale), self.csColor, arrow=True)
+        self.drawVector(self.Point3P(0,0,0), self.Point3P(self.csTheta,self.csPhi, 0.1 + self.csBeamScale * self.afBeamScale), self.csColor)
         gl.glEnd()
         gl.glEndList()
         return genList
@@ -363,9 +303,9 @@ class QAntennaViewer(QOpenGLWidget):
 
         gl.glBegin(gl.GL_LINES)
 
-        self.drawVector(self.Point3P(0,0,0), self.Point3P(0,0,10), self.zAxisBlue, arrow=False)
-        self.drawVector(self.Point3P(90,0,0), self.Point3P(90,0,10), self.yAxisGreen, arrow=False)
-        self.drawVector(self.Point3P(90,90,0), self.Point3P(90,90,10), self.xAxisRed, arrow=False)
+        self.drawVector(self.Point3P(0,0,0), self.Point3P(0,0,10), self.zAxisBlue)
+        self.drawVector(self.Point3P(90,0,0), self.Point3P(90,0,10), self.yAxisGreen)
+        self.drawVector(self.Point3P(90,90,0), self.Point3P(90,90,10), self.xAxisRed)
 
         gl.glEnd()
         gl.glEndList()
