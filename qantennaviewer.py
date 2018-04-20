@@ -100,11 +100,16 @@ class QAntennaViewer(QOpenGLWidget):
           self.csTheta = theta
 
     def setXRotation(self, angle):
+        """Rotation is limited from -90 to 90 degrees """
         angle = self.normalizeAngle(angle)
-        #self.setAFPoints([4 * angle / (360 * 16)])
+        if angle <270*16 and angle > 90*16:
+          return
         if angle != self.xRot:
             self.xRot = angle
-            self.xRotationChanged.emit(angle)
+            if angle >= 270*16:
+              self.xRotationChanged.emit(angle - 360*16)
+            else:
+              self.xRotationChanged.emit(self.normalizeAngle(angle))
             self.update()
 
     def setYRotation(self, angle):
@@ -170,7 +175,7 @@ class QAntennaViewer(QOpenGLWidget):
         gl.glRotated(self.xRot / 16.0, 1.0, 0.0, 0.0)
         gl.glRotated(self.yRot / 16.0, 0.0, 1.0, 0.0)
         gl.glRotated(self.zRot / 16.0, 0.0, 0.0, 1.0)
-        #gl.glCallList(self.substrate)
+        gl.glCallList(self.substrate)
         if self.drawAxis:
             pass
             gl.glCallList(self.axisLines)
@@ -181,7 +186,7 @@ class QAntennaViewer(QOpenGLWidget):
             self.currentSettings = self.makeCurrentSettings()
             self.dirtyCurrentSettings = False
         gl.glCallList(self.currentSettings)
-        #gl.glCallList(self.beamPattern)
+        gl.glCallList(self.beamPattern)
 
     def resizeGL(self, width, height):
         side = min(width, height)
@@ -205,9 +210,9 @@ class QAntennaViewer(QOpenGLWidget):
 
         if event.buttons() & Qt.LeftButton:
             self.setXRotation(self.xRot + 8 * dy)
-            self.setYRotation(self.yRot + 8 * dx)
+            #self.setYRotation(self.yRot + 8 * dx)
         elif event.buttons() & Qt.RightButton:
-            self.setXRotation(self.xRot + 8 * dy)
+            #self.setXRotation(self.xRot + 8 * dy)
             self.setZRotation(self.zRot + 8 * dx)
 
         self.lastPos = event.pos()
@@ -406,11 +411,12 @@ class QAntennaViewer(QOpenGLWidget):
       gl.glVertex3d(point3p.x, point3p.y, point3p.z)
 
     def normalizeAngle(self, angle):
-        while angle < 0:
-            angle += 360 * 16
-        while angle > 360 * 16:
-            angle -= 360 * 16
-        return angle
+      #return angle % 360 * 16
+      while angle < 0:
+        angle += 360 * 16
+      while angle > 360 * 16:
+        angle -= 360 * 16
+      return angle
 
     def setClearColor(self, c):
         gl.glClearColor(c.redF(), c.greenF(), c.blueF(), c.alphaF())
@@ -435,27 +441,29 @@ class Window(QWidget):
 
         self.glWidget = QAntennaViewer()
 
-        self.xSlider = self.createSlider()
-        self.ySlider = self.createSlider()
+        #min = 1 prevents rapid flitching
+        self.xSlider = self.createSlider(min=-90, max = 90)
         self.zSlider = self.createSlider()
+        #change to zoom slide
+        #self.ySlider = self.createSlider(max=180)
 
         self.xSlider.valueChanged.connect(self.glWidget.setXRotation)
         self.glWidget.xRotationChanged.connect(self.xSlider.setValue)
-        self.ySlider.valueChanged.connect(self.glWidget.setYRotation)
-        self.glWidget.yRotationChanged.connect(self.ySlider.setValue)
+        #self.ySlider.valueChanged.connect(self.glWidget.setYRotation)
+        #self.glWidget.yRotationChanged.connect(self.ySlider.setValue)
         self.zSlider.valueChanged.connect(self.glWidget.setZRotation)
         self.glWidget.zRotationChanged.connect(self.zSlider.setValue)
 
         mainLayout = QHBoxLayout()
         mainLayout.addWidget(self.glWidget)
         mainLayout.addWidget(self.xSlider)
-        mainLayout.addWidget(self.ySlider)
+        #mainLayout.addWidget(self.ySlider)
         mainLayout.addWidget(self.zSlider)
         self.setLayout(mainLayout)
 
-        self.xSlider.setValue(15 * 16)
-        self.ySlider.setValue(345 * 16)
-        self.zSlider.setValue(0 * 16)
+        self.xSlider.setValue(45 * 16)
+        #self.ySlider.setValue(0)
+        self.zSlider.setValue(90 * 16)
 
         self.setWindowTitle("QAntennaViewer")
 
@@ -464,10 +472,10 @@ class Window(QWidget):
             pts = b.generateAllAF()
             self.glWidget.setAFPoints(pts)
 
-    def createSlider(self):
+    def createSlider(self, min = 0, max=360):
         slider = QSlider(Qt.Vertical)
 
-        slider.setRange(0, 360 * 16)
+        slider.setRange(min * 16, max * 16)
         slider.setSingleStep(16)
         slider.setPageStep(15 * 16)
         slider.setTickInterval(15 * 16)
