@@ -1,7 +1,8 @@
 import sys
 import math
-from math import sin, cos, radians
+from math import sin, cos, radians, acos
 from collections import namedtuple
+from itertools import cycle
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtWidgets import (QApplication, QHBoxLayout, QOpenGLWidget, QSlider,
@@ -22,34 +23,51 @@ class QAntennaViewer(QOpenGLWidget):
 
     #3D, cartesian / 3D, polar object types
     Point3C = namedtuple('Point3C', ['x','y','z'])
-    Point3P = namedtuple('Point3P', ['theta','phi','r'])
+    Point3P = namedtuple('Point3P', ['theta','phi','r']) #degrees
 
     def __init__(self, parent=None):
         super(QAntennaViewer, self).__init__(parent)
 
+        #OpenGL call lists
         self.substrate = 0
         self.beamPattern = 0
+        self.axisLines = 0
+        self.currentSettings = 0
+
         self.xRot = 0
         self.yRot = 0
         self.zRot = 0
 
         self.lastPos = QPoint()
 
-        self.trolltechGreen = QColor.fromCmykF(0.40, 0.0, 1.0, 1)
-        self.trolltechRed = QColor.fromCmykF(0.0, 1.0, 1.0, 1)
-        self.trolltechBlue = QColor.fromCmykF(1.0, 1.0, 0.0, 1)
-        self.trolltechPurple = QColor.fromCmykF(0.39, 0.39, 0.0, 0.0)
-        self.trolltechOrange = QColor.fromCmykF(0.39, 0.55, 0.88, 0.1)
+        self.xAxisRed = QColor.fromCmykF(0.0, 1.0, 1.0, 0.18)
+        self.yAxisGreen = QColor.fromCmykF(1.0, 0.0, 1.0, 0.21)
+        self.zAxisBlue = QColor.fromCmykF(1.0, 1.0, 0.0, .19)
+        self.csColor = QColor.fromCmykF(0.29, 0.32, 0, 0.71)
+        self.backgroundPurple = QColor.fromCmykF(0.39, 0.39, 0.0, 0.0)
+        
 
         self.substrateColor = QColor.fromCmykF(0.57, 0, 0.76, 0.77)
         self.antennaColor = QColor.fromCmykF(0, 0.17, 0.93, 0.16)
 
+        #Drawn antenna factor pattern
         self.afPoints = [] 
         self.afNPhi = 0     #number of phi points
         self.afNTheta = 0   #number of theta points
+        self.afBeamScale = 0.5
         self.beamTransparancy = 200
 
-        self.dirtyBeamPattern = False #if true, redraw
+        self.dirtyBeamPattern = False #if true, recalculate antenna pattern points
+        self.dirtyCurrentSettings = True
+
+        #current setting vector
+        self.csTheta = 10
+        self.csPhi = 10
+        self.csBeamScale = 1.0
+
+        #draw options
+        self.drawAxis = True 
+
 
     def getOpenglInfo(self):
         info = """
@@ -71,6 +89,15 @@ class QAntennaViewer(QOpenGLWidget):
 
     def sizeHint(self):
         return QSize(400, 400)
+
+    def setCurrentSettingVector(self, theta, phi, beamStrength=1.0):
+        """ Sets the direction of the current-settings pointing vector"""
+        #0.5 just emperically work
+        if theta != self.csTheta or phi != self.csPhi or beamStrength != self.csBeamScale:
+          self.dirtyCurrentSettings = True
+          self.csBeamScale =  beamStrength
+          self.csPhi = phi
+          self.csTheta = theta
 
     def setXRotation(self, angle):
         angle = self.normalizeAngle(angle)
@@ -94,33 +121,46 @@ class QAntennaViewer(QOpenGLWidget):
             self.zRotationChanged.emit(angle)
             self.update()
 
-    def setAFPoints(self, afList, n_phi=30, n_theta=30):
+    def setAFPoints(self, afList, n_phi=30, n_theta=30, beamStrength=1.0):
         """expects a list of sorted (theta, phi, AF) points to plot 
             this antenna's AF
 
             n_phi = # of different values of phi
             n_theta = # of different values of theta
-
+            
+            beamStrength = drawn magnitude of beam, from 0 to 1
             Aught to be sorted by phi, then theta, least to greatest
             """
+        if beamStrength > 1:
+          beamStrength = 1
+        elif beamStrength < 0:
+          beamStrength = 0
+
         if afList != self.afPoints:
             self.afPoints = afList
             self.afNPhi = n_phi
             self.afNTheta = n_theta
+            #0.5 just works well for scale
+            self.afBeamScale = 0.5 * beamStrength
             self.dirtyBeamPattern = True
             self.update()
 
     def initializeGL(self):
         print(self.getOpenglInfo())
 
-        self.setClearColor(self.trolltechPurple.darker())
+        self.setClearColor(self.backgroundPurple.darker())
         self.substrate = self.makeSubstrate()
         self.beamPattern = self.makeBeamPattern()
+        self.axisLines = self.makeAxisLines()
         gl.glShadeModel(gl.GL_FLAT)
         gl.glEnable(gl.GL_DEPTH_TEST)
+
+        #enable alpha channel
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA)
-        #gl.glEnable(gl.GL_CULL_FACE)
+        #make prettier lines 
+        gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST)
+        gl.glEnable(gl.GL_LINE_SMOOTH)
 
     def paintGL(self):
         gl.glClear(
@@ -130,10 +170,18 @@ class QAntennaViewer(QOpenGLWidget):
         gl.glRotated(self.xRot / 16.0, 1.0, 0.0, 0.0)
         gl.glRotated(self.yRot / 16.0, 0.0, 1.0, 0.0)
         gl.glRotated(self.zRot / 16.0, 0.0, 0.0, 1.0)
-        gl.glCallList(self.substrate)
+        #gl.glCallList(self.substrate)
+        if self.drawAxis:
+            pass
+            gl.glCallList(self.axisLines)
         if self.dirtyBeamPattern: #redraw if necessary
             self.beamPattern = self.makeBeamPattern()
-        gl.glCallList(self.beamPattern)
+            self.dirtyBeamPattern = False
+        if self.dirtyCurrentSettings:
+            self.currentSettings = self.makeCurrentSettings()
+            self.dirtyCurrentSettings = False
+        gl.glCallList(self.currentSettings)
+        #gl.glCallList(self.beamPattern)
 
     def resizeGL(self, width, height):
         side = min(width, height)
@@ -174,7 +222,7 @@ class QAntennaViewer(QOpenGLWidget):
 
 
         #scale factor
-        m = 0.5 #????
+        m = self.afBeamScale #????
         
         #collect points from self.afPoints
         for theta in range(self.afNTheta - 1):
@@ -212,24 +260,117 @@ class QAntennaViewer(QOpenGLWidget):
     
     def P3toC3(self, pol):
         """
-            polar to cartesian 
-
-            There's definitely some superior built-in way to do this.
-                I'll find it and figure that out if this turns out to be too slow
-
             pol - Point3P(phi, theta, r)
             return- Point3C(x,y,z)
         """
-
+        assert(isinstance(pol, self.Point3P))
         x = sin(radians(pol.phi)) * sin(radians(pol.theta)) * pol.r
         y = cos(radians(pol.phi)) * sin(radians(pol.theta)) * pol.r
         z = cos(radians(pol.theta)) * pol.r 
         return self.Point3C(x,y,z)
+    def C3toP3(self, c, theta0=Point3C(0,0,1), phi0=Point3C(0,1,0),O0=Point3C(0,0,0)):
+      """ PointC3 to PointP3"""
+      t = self.angBtwC(c, theta0)
+      p = self.angBtwC(c, phi0)
+      r = self.subC(c, O0)
+      return self.Point3C(t, p, r)
+      assert(isinstance(c, self.Point3C))
+
+
+    def P3toNewP3(self, pP0, phi1, theta1, O1, phi0=Point3C(0,1,0), theta0=Point3C(0,0,1), O0=Point3C(0,0,0))
+      """ Converts P3 in one cordinate system to new coordinate system
+        pP0 - Polar point in old coordinate space
+
+        phi1 = C vector pointing in new phi=0 direction
+        theta1 = C vector pointing in new theta=0 direction
+        O1 = C vector definining new origin
+        
+        ...0 - definition of old coordinate space
+      """
+      pc =self.P3toC3(pP0)
+
+      #TODO shift coordinates properly
+      
+      t_new = self.angBtwC(pc, theta1)
+      phi_new = self.angBtwC(pc, phi1)
+      r_new = self.subC(pc, O1)
+      return self.PointP3(t_new, phi_new, r_new)
+
+    def angBtwC(self, C1, C2):
+      """gets the angle between C1 and C2"""
+      return acos( (self.dotC(C1, C2)) / (self.magC(C1) * self.magC(C2)))
+
+    def dotC(self, C1, C2):
+      return C1.x * C2.x + C1.y * C2.y + C1.z * C2.z
+
+    def normC(self, C):
+      """Normalization of C"""
+      a = self.magC(C)
+      return self.Point3C(C.x / a, C.y / a, C.z / a)
+
+    def subC(self, C1, C2):
+      return self.Point3C(C1.x - C2.x, C1.y - C2.y, C1.z - C2.z)
+
+    def magC(self, C):
+      """magnitude of Point3C"""
+      return math.sqrt(C.x **2 + C.y ** 2 + C.z ** 2)
 
     def AfToColor(self, af):
         """0 <= af <= 1"""
         h = 240 - (af * 240)
         return QColor.fromHsl(h,200,182, self.beamTransparancy)
+
+    def drawVector(self, p3c_s, p3c_p, color, arrow=True, ar=.1, aw=10, a_n=4):
+        """Draw a vector from s to p.
+          Assume you're working with GL_LINES
+
+          Optional parameters are for putting an arrow head at the end 
+        """
+
+        self.setColor(color)
+        p1 = self.P3toC3(p3c_s)
+        p2 = self.P3toC3(p3c_p)
+        self.glVertex_C3(p1)
+        self.glVertex_C3(p2)
+
+        if arrow:
+          ptList = []
+          for i in range(a_n):
+            ptList.append(self.Point3P(aw, i * ((360)/a_n), p3c_p.r - ar))
+
+          print(len(ptList),ptList)
+          ptList = map(self.P3toC3,ptList )
+          c = zip(ptList, cycle([p2]))
+          for p in c:
+            self.glVertex_C3(p[0])
+            self.glVertex_C3(p[1])
+
+    def makeCurrentSettings(self):
+        """ Draw vector showing current input settings"""
+        genList = gl.glGenLists(1)
+        gl.glNewList(genList, gl.GL_COMPILE)
+        gl.glBegin(gl.GL_LINES)
+        #use afBeamScale for r
+        self.drawVector(self.Point3P(0,0,0), self.Point3P(self.csTheta,self.csPhi, 0.1 + self.csBeamScale * self.afBeamScale), self.csColor, arrow=True)
+        gl.glEnd()
+        gl.glEndList()
+        return genList
+
+    def makeAxisLines(self):
+        """Draw axis lines"""
+        genList = gl.glGenLists(1)
+        gl.glNewList(genList, gl.GL_COMPILE)
+
+        gl.glBegin(gl.GL_LINES)
+
+        self.drawVector(self.Point3P(0,0,0), self.Point3P(0,0,10), self.zAxisBlue, arrow=False)
+        self.drawVector(self.Point3P(90,0,0), self.Point3P(90,0,10), self.yAxisGreen, arrow=False)
+        self.drawVector(self.Point3P(90,90,0), self.Point3P(90,90,10), self.xAxisRed, arrow=False)
+
+        gl.glEnd()
+        gl.glEndList()
+
+        return genList
 
     def makeSubstrate(self):
         genList = gl.glGenLists(1)
@@ -320,6 +461,9 @@ class QAntennaViewer(QOpenGLWidget):
         gl.glVertex3d(x2, y2, z2)
         gl.glVertex3d(x3, y3, z3)
         gl.glVertex3d(x4, y4, z4) 
+
+    def glVertex_C3(self, point3p):
+      gl.glVertex3d(point3p.x, point3p.y, point3p.z)
 
     def normalizeAngle(self, angle):
         while angle < 0:
