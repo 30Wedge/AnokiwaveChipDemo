@@ -177,7 +177,7 @@ class BeamDefinition:
 
     xdim = len(self.antennaGrid)
     ydim = len(self.antennaGrid[0])
-    self.gainSettings = [[1 for x in range(xdim)] for y in range(ydim)]
+    self.gainSettings = [[1 for y in range(ydim)] for x in range(xdim)]
 
     return self.gainSettings
 
@@ -240,7 +240,6 @@ class BeamDefinition:
       p = 0
       t = t + t_d
     
-    print(self.phaseSettingsRaw)
 
     if normalized:
       return [(t, p, a/abs(af_max)) for (t, p, a) in points] #divide all afs by af_max
@@ -422,14 +421,27 @@ def testBeamDefinition():
   d1 = b1.getPhaseSettings()
   print( "Funny cal: \t" + d1.__str__())
   
+def testAfGen():
+  f = 28 * pow(10,9) #29GHz
+  c = 3 * pow(10, 8)
+  w = c/f 
 
+  b1 = BeamDefinition(10, 90, w, phaseCalFile="0phaseCal.yaml") 
+  #d1 = b1.generateAllAF()
+  
+  b1.setAntenna( [[NE, NW, SE, SW]], [[ True, False, True, False]],5.4 * pow(10,-3))
+  d2 = b1.generateAllAF()
 
 if __name__ == '__main__':
-  from time import time
-  t1 = time()
-  testBeamDefinition()
-  t2 = time()
-  tt = t2 - t1
-  print("Total time elapsed: " + tt.__str__() + "s")
+  beamDefTest = False
+  afGenTest = True
 
-1
+  if beamDefTest:
+    from time import time
+    t1 = time()
+    testBeamDefinition()
+    t2 = time()
+    tt = t2 - t1
+    print("Total time elapsed: " + tt.__str__() + "s")
+  if afGenTest:
+    testAfGen()

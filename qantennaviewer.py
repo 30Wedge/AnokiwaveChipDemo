@@ -67,7 +67,12 @@ class QAntennaViewer(QOpenGLWidget):
 
         #draw options
         self.drawAxis = True 
+        self.antenna4x1 = False
 
+    def setAntenna4x1(self, antenna4x1):
+      """ True = draw 4x1 antenna
+          False = draw 2x2 antenna"""
+      self.antenna4x1 = antenna4x1
 
     def getOpenglInfo(self):
         info = """
@@ -92,7 +97,6 @@ class QAntennaViewer(QOpenGLWidget):
 
     def setCurrentSettingVector(self, theta, phi, beamStrength=1.0):
         """ Sets the direction of the current-settings pointing vector"""
-        #0.5 just emperically work
         if theta != self.csTheta or phi != self.csPhi or beamStrength != self.csBeamScale:
           self.dirtyCurrentSettings = True
           self.csBeamScale =  beamStrength
@@ -323,11 +327,13 @@ class QAntennaViewer(QOpenGLWidget):
 
         gl.glBegin(gl.GL_QUADS)
 
-        #m = scale factor
+        #m = scale factor -- this just works well
         m = 0.02
         #hardcode units match the hfss model in mm
-        #self.drawAntennaGrid( m*5.4, 4, 1, m*3.4, m* 4.2, m*0.5)
-        self.drawAntennaGrid( m*5.4, 2, 2, m*3.4, m* 4.2, m*0.5)
+        if self.antenna4x1:
+          self.drawAntennaGrid( m*5.4, 4, 1, m*3.4, m* 4.2, m*0.5)
+        else:
+          self.drawAntennaGrid( m*5.4, 2, 2, m*3.4, m* 4.2, m*0.5)
 
         #End GL point list
         gl.glEnd()
@@ -436,7 +442,7 @@ class Window(QWidget):
     """Dummy container class for testing copy paste from 
       https://github.com/baoboa/pyqt5/tree/master/examples/opengl
       """
-    def __init__(self, beamViewTest=True):
+    def __init__(self):
         super(Window, self).__init__()
 
         self.glWidget = QAntennaViewer()
@@ -467,9 +473,19 @@ class Window(QWidget):
 
         self.setWindowTitle("QAntennaViewer")
 
+        beamViewTest = False
+        antenna4x1Test = True
+
         if beamViewTest:
             b = BeamDefinition(10, 10, 0.01)
             pts = b.generateAllAF()
+            self.glWidget.setAFPoints(pts)
+        elif antenna4x1Test:
+            b = BeamDefinition(40, 90, 0.01)
+            self.glWidget.setCurrentSettingVector(40, 90)
+            b.setAntenna( [[NE, NW, SE, SW]], [[ True, False, True, False]],5.4 * pow(10,-3))
+            pts = b.generateAllAF()
+            self.glWidget.setAntenna4x1(True)
             self.glWidget.setAFPoints(pts)
 
     def createSlider(self, min = 0, max=360):
@@ -486,7 +502,7 @@ class Window(QWidget):
 
 if __name__ == '__main__':
 
-    from beamdef import BeamDefinition
+    from beamdef import BeamDefinition, NE, NW, SE, SW
 
     app = QApplication(sys.argv)
     window = Window()
