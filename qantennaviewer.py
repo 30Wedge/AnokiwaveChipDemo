@@ -25,7 +25,7 @@ class QAntennaViewer(QOpenGLWidget):
     Point3C = namedtuple('Point3C', ['x','y','z'])
     Point3P = namedtuple('Point3P', ['theta','phi','r']) #degrees
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, cst0=0, csp0=0, csbs0=1.0):
         super(QAntennaViewer, self).__init__(parent)
 
         #OpenGL call lists
@@ -61,9 +61,9 @@ class QAntennaViewer(QOpenGLWidget):
         self.dirtyCurrentSettings = True
 
         #current setting vector
-        self.csTheta = 10
-        self.csPhi = 10
-        self.csBeamScale = 1.0
+        self.csTheta = cst0
+        self.csPhi = csp0
+        self.csBeamScale = csbs0
 
         #draw options
         self.drawAxis = True 
@@ -102,11 +102,12 @@ class QAntennaViewer(QOpenGLWidget):
           self.csBeamScale =  beamStrength
           self.csPhi = phi
           self.csTheta = theta
+          self.update()
 
     def setXRotation(self, angle):
         """Rotation is limited from -90 to 90 degrees """
         angle = self.normalizeAngle(angle)
-        if angle <270*16 and angle > 90*16:
+        if angle > 90*16:
           return
         if angle != self.xRot:
             self.xRot = angle
@@ -448,7 +449,7 @@ class Window(QWidget):
         self.glWidget = QAntennaViewer()
 
         #min = 1 prevents rapid flitching
-        self.xSlider = self.createSlider(min=-90, max = 90)
+        self.xSlider = self.createSlider(min=-90, max = 0)
         self.zSlider = self.createSlider()
         #change to zoom slide
         self.zoomSlider = self.createSlider(min=4, max= 9)
