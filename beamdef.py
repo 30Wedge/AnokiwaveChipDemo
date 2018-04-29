@@ -68,11 +68,11 @@ class BeamDefinition:
     #
     #            ex. 4x1:
     #            [ [NE, NW, SE, SW]]
-    self.antennaGrid = [[NW, NE], [SW, SE]] 
-    #self.antennaGrid = [[NE, NW, SE, SW]] # (x_dimension, y_dimension)
+    #self.antennaGrid = [[NW, NE], [SW, SE]] 
+    self.antennaGrid = [[NE, NW, SE, SW]] # (x_dimension, y_dimension)
 
-    self.antennaInvert = [[True, False], [True, False]]
-    #self.antennaInvert = [[True, False, True, False]]
+    #self.antennaInvert = [[True, False], [True, False]]
+    self.antennaInvert = [[True, False, True, False]]
     self.antennaSpacing = 5.4 * pow(10,-3) #space between the center of antennas (meters)
 
     #Calculated awmf0108 settings... calculate when needed

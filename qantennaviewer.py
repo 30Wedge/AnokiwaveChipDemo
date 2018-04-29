@@ -81,7 +81,7 @@ class QAntennaViewer(QOpenGLWidget):
 
         #draw options
         self.drawAxis = True 
-        self.antenna4x1 = False
+        self.antenna4x1 = True
 
     def setAntenna4x1(self, antenna4x1):
       """ True = draw 4x1 antenna
