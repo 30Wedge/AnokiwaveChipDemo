@@ -468,7 +468,7 @@ class SPI(object):
         else:
             wordArr=rData
 
-        return wordArr
+        return wordArr, fRet
 
 
 

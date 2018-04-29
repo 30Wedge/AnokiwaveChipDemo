@@ -32,7 +32,7 @@ class BeamDefinition:
   
 
 
-  def __init__(self, theta, phi, waveLength, phaseCalFile="phaseCal.yaml", beamStrength=None):
+  def __init__(self, theta, phi, waveLength, phaseCalFile="phaseCal.yaml", beamStrength=1):
     """Inits the object with polar coordinate input 
     theta           polar angle offset in degrees
       0 degrees = broadside beam
@@ -40,7 +40,7 @@ class BeamDefinition:
       0 degrees = North
     waveLength      wavelength *in meters*
     phaseCalFile    yaml file for calibrating the phase offset 
-    beamStrength    useless for now. leave blank.
+    beamStrength    scalar amplification in dB of all active chains (uniform illumination)
 
     A = BeamDefinition(theta, phi, wavelength) 
 
@@ -167,20 +167,22 @@ class BeamDefinition:
 
     return self.phaseSettingsRaw
 
-  def getGainSettings(self):
+  def getRelativeGain(self):
     """ 
-      Return gain settings for this configuration.
-      As long as we're using uniform illumination, set it all to 1
+      Return relative gain between each antenna 0 to 1.0
+      As long as we're using uniform illumination, should be all 1 
     """
     if len(self.gainSettings) > 0 :
       return self.gainSettings
 
     xdim = len(self.antennaGrid)
     ydim = len(self.antennaGrid[0])
-    self.gainSettings = [[1 for y in range(ydim)] for x in range(xdim)]
+    self.gainSettings = [[self.beamStrength / self.beamStrength for y in range(ydim)] for x in range(xdim)]
 
     return self.gainSettings
 
+  def getBeamStrength(self):
+    return self.beamStrength
 
   def setAntenna(self, grid, invertPattern, spacing):
     """ 
@@ -226,7 +228,7 @@ class BeamDefinition:
       while p < p_max :
         # calculate the Antenna Factor for this angle at these settings and add it
         # to the list
-        a = self._calculateArrayFactor(radians(t), radians(p), self.getGainSettings(), self.getRawPhaseSettings(), self.waveLength);
+        a = self._calculateArrayFactor(radians(t), radians(p), self.getRelativeGain(), self.getRawPhaseSettings(), self.waveLength);
 
         if absAf:
           a = abs(a)
