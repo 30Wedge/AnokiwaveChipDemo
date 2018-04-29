@@ -1,3 +1,17 @@
+#-------------------------------------------------------------------------------
+# Name:        qantennaviewer
+# Purpose:     Draw antenna and radiation patterns
+#
+# Author:      Andy MacGregor
+#              
+#
+# Created:     12/12/2017
+# Copyright:   (c) Anokiwave Capstone Team 2017
+# Licence:     <LGPLv3>
+#   See        https://www1.qt.io/qt-licensing-terms/
+#              https://www.qt.io/download
+#-------------------------------------------------------------------------------
+
 import sys
 import math
 from math import sin, cos, radians, acos
@@ -57,7 +71,7 @@ class QAntennaViewer(QOpenGLWidget):
         self.afBeamScale = 0.5
         self.beamTransparancy = 200
 
-        self.dirtyBeamPattern = False #if true, recalculate antenna pattern points
+        self.dirtyBeamPattern = False 
         self.dirtyCurrentSettings = True
 
         #current setting vector
@@ -232,7 +246,7 @@ class QAntennaViewer(QOpenGLWidget):
 
 
         #scale factor
-        m = self.afBeamScale #????
+        m = self.afBeamScale
         
         #collect points from self.afPoints
         for theta in range(self.afNTheta - 1):
@@ -251,7 +265,7 @@ class QAntennaViewer(QOpenGLWidget):
                 p1, p2, p3, p4 = [self.Point3P(p.theta, p.phi, m*p.r) for p in (p1,p2,p3,p4)]
 
                 #draw this patch
-                self.quad_a_3P(p1, p2, p3, p4)
+                self.quad3P(p1, p2, p3, p4)
 
             #get that last patch in this row by wrapping it around to the beginning
             p1 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (phi + 1)])
@@ -260,9 +274,8 @@ class QAntennaViewer(QOpenGLWidget):
             p4 = self.Point3P(*self.afPoints[(theta + 0) * self.afNTheta + (0)])
             self.setColor(self.AfToColor(p3.r))
             p1, p2, p3, p4 = [self.Point3P(p.theta, p.phi, m*p.r) for p in (p1,p2,p3,p4)]
-            self.quad_a_3P(p1, p2, p3, p4)
+            self.quad3P(p1, p2, p3, p4)
 
-        #End GL point list
         gl.glEnd()
         gl.glEndList()
 
@@ -288,12 +301,11 @@ class QAntennaViewer(QOpenGLWidget):
         """Draw a vector from s to p.
           Assume you're working with GL_LINES
         """
-
         self.setColor(color)
         p1 = self.P3toC3(p3c_s)
         p2 = self.P3toC3(p3c_p)
-        self.glVertex_C3(p1)
-        self.glVertex_C3(p2)
+        self.glVertexC3(p1)
+        self.glVertexC3(p2)
 
     def makeCurrentSettings(self):
         """ Draw vector showing current input settings"""
@@ -328,9 +340,9 @@ class QAntennaViewer(QOpenGLWidget):
 
         gl.glBegin(gl.GL_QUADS)
 
-        #m = scale factor -- this just works well
+        #m = scale factor -- 0.02 was found to work well
         m = 0.02
-        #hardcode units match the hfss model in mm
+        #hardcode units match the real HFSS antenna model in mm
         if self.antenna4x1:
           self.drawAntennaGrid( m*5.4, 4, 1, m*3.4, m* 4.2, m*0.5)
         else:
@@ -350,14 +362,10 @@ class QAntennaViewer(QOpenGLWidget):
         sub_x = dim_x * patch_x  + (dim_x + 0) * spacing
         sub_y = dim_y * patch_y  + (dim_y + 1) * spacing
 
-        ##Draw the substrate centered on the origin with back at z=0
         self.setColor(self.substrateColor)
         self.prism(-sub_x/2, -sub_y/2, 0, sub_x, sub_y, sub_z)
 
-        ##draw patchAntennas
         self.setColor(self.antennaColor)
-        #Figure out how to space patches
-        #start drawing from -x, -y
         space_x = spacing 
         space_y = spacing 
 
@@ -387,34 +395,34 @@ class QAntennaViewer(QOpenGLWidget):
 
     def rect_x(self, x, y1, z1, y_len, z_len):
         """Defines a rectangle orthogonal to the x direction"""
-        self.quad_a(x, y1, z1, x, y1 + y_len, z1, x, y1 + y_len, z1 + z_len, x, y1, z1 + z_len)
+        self.quad(x, y1, z1, x, y1 + y_len, z1, x, y1 + y_len, z1 + z_len, x, y1, z1 + z_len)
 
     def rect_y(self, y, x1, z1, x_len, z_len):
         """Defines a rectangle orthogonal to the y direction"""
-        self.quad_a(x1, y, z1, x1 + x_len, y, z1, x1 + x_len, y, z1 + z_len, x1, y, z1 + z_len)
+        self.quad(x1, y, z1, x1 + x_len, y, z1, x1 + x_len, y, z1 + z_len, x1, y, z1 + z_len)
 
     def rect_z(self, z, x1, y1, x_len, y_len):
         """Defines a rectangle orthogonal to the z direction"""
-        self.quad_a(x1, y1, z, x1 + x_len, y1, z, x1 + x_len, y1 + y_len, z, x1, y1 + y_len, z)
+        self.quad(x1, y1, z, x1 + x_len, y1, z, x1 + x_len, y1 + y_len, z, x1, y1 + y_len, z)
 
-    ##Quad family -- draw _a_rbitrary rectangles in space 
+    ##Quad family -- draw arbitrary rectangles in space 
 
-    def quad_a_3P(self, p1, p2, p3, p4):
+    def quad3P(self, p1, p2, p3, p4):
         """Take Point3P namedtuples instead"""
-        self.quad_a_3C(self.P3toC3(p1), self.P3toC3(p2), self.P3toC3(p3), self.P3toC3(p4))
+        self.quad3C(self.P3toC3(p1), self.P3toC3(p2), self.P3toC3(p3), self.P3toC3(p4))
 
-    def quad_a_3C(self, p1, p2, p3, p4):
+    def quad3C(self, p1, p2, p3, p4):
         """Take Point3C namedtuples instead"""
-        self.quad_a(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z, p4.x, p4.y, p4.z)
+        self.quad(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z, p4.x, p4.y, p4.z)
 
-    def quad_a(self, x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4):
+    def quad(self, x1, y1, z1, x2, y2, z2, x3, y3, z3, x4, y4, z4):
         """exhaustively defines all 4 points of a quadrangle and draws it"""
         gl.glVertex3d(x1, y1, z1)
         gl.glVertex3d(x2, y2, z2)
         gl.glVertex3d(x3, y3, z3)
         gl.glVertex3d(x4, y4, z4) 
 
-    def glVertex_C3(self, point3p):
+    def glVertexC3(self, point3p):
       gl.glVertex3d(point3p.x, point3p.y, point3p.z)
 
     def normalizeAngle(self, angle):
@@ -432,11 +440,8 @@ class QAntennaViewer(QOpenGLWidget):
         gl.glColor4f(c.redF(), c.greenF(), c.blueF(), c.alphaF())
 
 
-
 ########################################################################
-############ below is for testing only
-########################################################################
-
+############ Tests
 
 
 class Window(QWidget):

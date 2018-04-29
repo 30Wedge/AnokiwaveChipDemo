@@ -1,13 +1,16 @@
 #-------------------------------------------------------------------------------
-# Name:        Beam definition GUI
-# Purpose:
+# Name:        BeamDemo
+# Purpose:     awmf0108 system control GUI
 #
 # Author:      Grayson Colwell
 #              Andy MacGregor
 #
-# Created:     11/02/2018
-# Copyright:   (c) Anokiwave Capstone Team
-# Licence:     Memes
+#              
+# Created:     12/12/2017
+# Copyright:   (c) Anokiwave Capstone Team 2017
+# Licence:     <LGPLv3>
+#   See        https://www1.qt.io/qt-licensing-terms/
+#              https://www.qt.io/download
 #-------------------------------------------------------------------------------
 import sys
 
@@ -21,7 +24,6 @@ from maingui import Ui_Dialog
 
 
 class MyApp(QDialog, Ui_Dialog):
-
     def __init__(self):
         super(MyApp, self).__init__()
         self.setupUi(self)
@@ -39,16 +41,15 @@ class MyApp(QDialog, Ui_Dialog):
         self.timer.start(1000)
 
         #Connect inputs
-        self.thetaBox.valueChanged.connect(self.setCsVector)
-        self.phiBox.valueChanged.connect(self.setCsVector)
-        self.beamDefButton.clicked.connect(self.calcBeamDef)
+        self.thetaBox.valueChanged.connect(self.sketchAfPattern)
+        self.phiBox.valueChanged.connect(self.sketchAfPattern)
+        self.beamDefButton.clicked.connect(self.lockBeam)
         self.programButton.clicked.connect(self.progSpi)
 
         #initial view
-        self.setCsVector()
+        self.sketchAfPattern()
     
     def tryConnectSPI(self):
-        print("Tick")
         if self.spiConnected:
             return
         try:
@@ -63,33 +64,29 @@ class MyApp(QDialog, Ui_Dialog):
         return self.spiConnected
 
     def calculateWavelength(self):
-        """this module takes in the frequency and speed of light to fight the
-        Wavelength """
-        Frequency = (self.waveLengthBox.value()) * pow(10,9)
+        """Calculate wavelength from given f and speed of light"""
+        frequency = (self.waveLengthBox.value()) * pow(10,9)
         c = 3*pow(10,8)
-        WaLength = c / Frequency
-        return WaLength
+        wavelength = c / frequency
+        return wavelength
     
     def phiO(self):
         """takes in the value of Phi from the User"""
-        PhiV = (self.phiBox.value())
-        return PhiV
+        phiv = (self.phiBox.value())
+        return phiv
     
     def thetaO(self):
         """takes in the value of Theta from the User"""
-        ThetaV = (self.thetaBox.value())
-        return ThetaV
+        thetav = (self.thetaBox.value())
+        return thetav
 
     def getBeamAmp(self):
         return self.amplitudeBox.value()
     
-    def calcBeamDef(self):
+    def lockBeam(self):
         """prints the new beam settings based off the input frequency, theta, and
-        phi"""
-        #self.beamDef = BeamDefinition(self.thetaO(), self.phiO(), self.calculateWavelength(), beamStrength=self.getBeamAmp())
-        #self.phaseSettings = self.beamDef.getPhaseSettings()
-
-        #self.glViewer.setAFPoints((self.beamDef.generateAllAF()))
+        phi and updates the drawing's current settings vector"""
+        
         self.beamDef = BeamDefinition(self.thetaO(), self.phiO(), self.calculateWavelength(), beamStrength=self.getBeamAmp())
         self.phaseSettings = self.beamDef.getPhaseSettings()
         self.glViewer.setCurrentSettingVector(self.thetaO(), self.phiO())
@@ -106,17 +103,15 @@ class MyApp(QDialog, Ui_Dialog):
             statusString += "RX mode"
         statusString += ("| Amp:" + self.beamDef.getBeamStrength().__str__())
         statusString += ")"
-        
+
         self.curSettingsLabel.setText(statusString)
+
+
         if self.spiConnected:
             self.programButton.setEnabled(True)
-        
 
-    def setCsVector(self):
-        #self.glViewer.setCurrentSettingVector(self.thetaO(), self.phiO())
-        #self.beamDef = BeamDefinition(self.thetaO(), self.phiO(), self.calculateWavelength(), beamStrength=self.getBeamAmp())
-        #self.phaseSettings = self.beamDef.getPhaseSettings()
-        #use a temp calculation
+    def sketchAfPattern(self):
+        """Temporarily calculates beam pattern and updates visuals"""
         self.glViewer.setAFPoints( BeamDefinition(self.thetaO(), self.phiO(), self.calculateWavelength(), beamStrength=self.getBeamAmp()).generateAllAF() )
 
     def progSpi(self):
@@ -124,7 +119,7 @@ class MyApp(QDialog, Ui_Dialog):
         if self.radioButtonTx.isChecked():
             mode = TX_MODE
 
-        #convert to awmf amplification settings here... subtract by 31
+        #convert to awmf amplification settings here -> subtract by 31
         try:
             AwmfCommander.setBeam(mode, self.phaseSettings[0], self.phaseSettings[1], self.phaseSettings[2], self.phaseSettings[3],
                 31 - self.getBeamAmp(), 31 - self.getBeamAmp(), 31 - self.getBeamAmp(), 31 - self.getBeamAmp())

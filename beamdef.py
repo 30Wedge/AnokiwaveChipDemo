@@ -93,14 +93,13 @@ class BeamDefinition:
 
 
     """
-    #if they've already been calculated, don't redo the work
     if len(self.phaseSettings) > 0:
       return self.phaseSettings
 
     k = 2 * pi / (self.waveLength) # wave number
     
     ##phi/theta to ew/ns angle 
-    #Project a 3d angle onto a 2d plane...
+    #Project a 3d angle onto a 2d plane
     p=self.phi
     t=self.theta 
     ew_angle = atan( sin(p) * sin(t) / cos(t) )
@@ -108,44 +107,30 @@ class BeamDefinition:
 
     d = self.antennaSpacing
 
-    ##calculate offsets between elements    
     ew_phaseOffset = -k * d * sin(ew_angle)
     ns_phaseOffset = -k * d * sin(ns_angle)
 
-    ##Calculate offsets for each element
-    #inifialize offset list with zeros
     offsets = [ [0 for x in range(len(self.antennaGrid[0]))] for y in range(len(self.antennaGrid))]
-    for i in range(0, len(self.antennaGrid)): # i = numrows of antenna
-      # add ns offset between rows
+    for i in range(0, len(self.antennaGrid)):
       if i == 0:
         offsets[0][0] = 0
       else:
         offsets[i][0] = offsets[i-1][0] + ns_phaseOffset
       
-      # add ew offset between columns
-      for j in range(1, len(self.antennaGrid[0])): # j = numcols = x dimension
+      for j in range(1, len(self.antennaGrid[0])):
         offsets[i][j] = offsets[i][j - 1] + ew_phaseOffset
 
     #will be used in generateAllAF
     self.phaseSettingsRaw = copy.deepcopy(offsets)
 
-    #add phase flip
     for i in range(0, len(self.antennaGrid)):
       for j in range(0, len(self.antennaGrid[0])):
         if self.antennaInvert[i][j]:
           offsets[i][j] += pi
 
-    #Changes offsets from a 2d array to a flat dictionary indexed by quadrant.
-    #I'm sorry for writing it this way
-      #how it works - 1 flatten antennaGrid and offsets with that list comprehension
-      #               2 zip the flattened list into paired tuples
-      #               3 make a dictionary from the tuples & call it d_offsets
+    #convert to output format
     d_offsets = dict(zip( [j for i in self.antennaGrid for j in i], [j for i in offsets for j in i]))
-
-    #convert the offset dictionary to settings from phase angle
     s_offsets = {key: self._radiansToAwmf0108(val) for key, val in d_offsets.items()}
-
-    #apply phase calibration and convert to a plain array
     n_offsets = [ self._applyCalibration(x, s_offsets[x], self.phaseCal) for x in [NE, SE, SW, NW]]
 
     self.phaseSettings = n_offsets
@@ -160,8 +145,6 @@ class BeamDefinition:
       Maps the information stored in self.phaseSettings to locations specified
       by self.antennaGrid
     """
-    
-    #make sure its calc'd 
     if len(self.phaseSettingsRaw) == 0:
       self.getPhaseSettings()
 
@@ -211,7 +194,6 @@ class BeamDefinition:
         backLobes -- set true if you want to see the pattern on the back of the antenna
         
     """
-    #iterate from theta = 0 to 180 and phi = 0 to 360 in increments of d_theta and d_phi
     t = 0
     p = 0
     t_max = 180 if backLobes else 90
@@ -226,8 +208,6 @@ class BeamDefinition:
 
     while t < t_max :
       while p < p_max :
-        # calculate the Antenna Factor for this angle at these settings and add it
-        # to the list
         a = self._calculateArrayFactor(radians(t), radians(p), self.getRelativeGain(), self.getRawPhaseSettings(), self.waveLength);
 
         if absAf:
@@ -242,13 +222,10 @@ class BeamDefinition:
       p = 0
       t = t + t_d
     
-
     if normalized:
       return [(t, p, a/abs(af_max)) for (t, p, a) in points] #divide all afs by af_max
     else:
       return points
-
-  #########Helper-funciton-land
 
   def _calculateArrayFactor(self, theta, phi, I, d, waveLength):
     """ 
@@ -268,7 +245,7 @@ class BeamDefinition:
     cumulativeAF = 0
     for n in range(0, len(self.antennaGrid)):
       for m in range(0, len(self.antennaGrid[0])):
-        #exponential term to calculate AF
+        #exponential terms to calculate AF
         costerm = k*dist*n*sin(theta)*cos(phi)
         sinterm = k*dist*m*sin(theta)*sin(phi)
         cumulativeAF += I[n][m] * exp(1j *(d[n][m] + costerm + sinterm))
@@ -281,15 +258,9 @@ class BeamDefinition:
     Applies a calibration to a single setting _if the calibration map exists_
     and returns the result
     """
-    if calMap: #only if a structure was loaded
-      #setting probably won't appear in the calMap. Find the nearest thing that does
+    if calMap:
+      #round to nearest setting
       closestSetting = min(calMap[quadrant].keys(), key=lambda x:abs(x - setting))
-
-      #Only talk about the calibration if its being used
-      if calMap[quadrant][closestSetting] != 0:
-        if closestSetting != setting:
-          print("Calibration -- Using: " + closestSetting.__str__() + " instead of " + setting.__str__())
-        print("Calibration -- Applying: " + calMap[quadrant][closestSetting].__str__() + " to " + quadrant)
       
       return (setting - calMap[quadrant][closestSetting]) % 32
     else:
@@ -303,29 +274,9 @@ class BeamDefinition:
     """
     interval = self.phaseControlMax / self.phaseControlRange
     
-    #fix to be in range between 0 and 2pi radians
     fixed = rads % (2*pi)
 
     val = trunc(self._roundToNearest(fixed, interval) / interval);
-
-    #fix to prevent from returning 32 instead of 0
-    if val == self.phaseControlRange:
-      val = 0
-
-    return val
-
-  def _Awmf0108ToRadians(self, awmf):
-    """
-      rads: angle in radians to convert
-      return: phase setting in awmf-0108 format
-    """
-    interval = self.phaseControlMax / self.phaseControlRange
-    
-    #fix to be in range between 0 and 2pi radians
-    fixed = rads % (2*pi)
-
-    val = trunc(self._roundToNearest(fixed, interval) / interval);
-
     #fix to prevent from returning 32 instead of 0
     if val == self.phaseControlRange:
       val = 0
@@ -333,10 +284,6 @@ class BeamDefinition:
     return val
 
   def _roundToNearest(self, x, multiple):
-    """
-      round x to the nearest multiple of _multiple_
-      credit to stackOverflow
-    """
     return multiple * round( float(x) / multiple)
 
 
@@ -344,6 +291,8 @@ class BeamDefinition:
     """ 
       Load a phase calibration yaml file into a data structure 
       return the data structure
+      
+      *All units are in settings.*
 
       2-level dictionary structure:
         cal[X][p] = settingoffset error for quadrant X at phase setting p
@@ -357,17 +306,13 @@ class BeamDefinition:
       QUADRANT: {
         PHASE_SETTING: [Measurement - Setting]
       }
-
-    #All units are in settings.
     """
     #load the dictionary raw
     try:
       with open(phaseCalFile, "r") as stream:
         dataMap = yaml.safe_load(stream) #just assume its correct
-    except IOError: #Python2 doesn't have FileNotFoundError
-      print("No phase calibration file found.")
+    except IOError: 
       return None
-
     return dataMap
 
 
@@ -388,8 +333,8 @@ def unCheckedTestCase(t, p, w, i):
 
 
 def testBeamDefinition():
-  """Test harness for this module """
-  #Does some test calculations to make sure the module functions
+  """Test harness for this module 
+  Does some test calculations to make sure the module functions"""
   f = 28 * pow(10,9) #29GHz
   c = 3 * pow(10, 8)
   w = c/f 
@@ -424,12 +369,14 @@ def testBeamDefinition():
   print( "Funny cal: \t" + d1.__str__())
   
 def testAfGen():
-  f = 28 * pow(10,9) #29GHz
+  """Test afGen points.
+    Inspect manually"""
+  f = 28 * pow(10,9) #28GHz
   c = 3 * pow(10, 8)
   w = c/f 
 
   b1 = BeamDefinition(10, 90, w, phaseCalFile="0phaseCal.yaml") 
-  #d1 = b1.generateAllAF()
+  d1 = b1.generateAllAF()
   
   b1.setAntenna( [[NE, NW, SE, SW]], [[ True, False, True, False]],5.4 * pow(10,-3))
   d2 = b1.generateAllAF()
