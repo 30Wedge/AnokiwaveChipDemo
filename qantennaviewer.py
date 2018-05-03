@@ -73,6 +73,7 @@ class QAntennaViewer(QOpenGLWidget):
 
         self.dirtyBeamPattern = False 
         self.dirtyCurrentSettings = True
+        self.dirtyAntennaBox = True
 
         #current setting vector
         self.csTheta = cst0
@@ -86,7 +87,9 @@ class QAntennaViewer(QOpenGLWidget):
     def setAntenna4x1(self, antenna4x1):
       """ True = draw 4x1 antenna
           False = draw 2x2 antenna"""
+      self.dirtyAntennaBox = True
       self.antenna4x1 = antenna4x1
+      self.update()
 
     def getOpenglInfo(self):
         info = """
@@ -196,7 +199,9 @@ class QAntennaViewer(QOpenGLWidget):
         gl.glRotated(self.zRot / 16.0, 0.0, 0.0, 1.0)
         gl.glTranslated(0.0, 0.0, -0.3)
         gl.glScale(self.zoom, self.zoom, self.zoom)
-        gl.glCallList(self.substrate)
+        if self.dirtyAntennaBox:
+            self.substrate = self.makeSubstrate()
+            self.dirtyAntennaBox = False
         if self.drawAxis:
             pass
             gl.glCallList(self.axisLines)
@@ -206,6 +211,7 @@ class QAntennaViewer(QOpenGLWidget):
         if self.dirtyCurrentSettings:
             self.currentSettings = self.makeCurrentSettings()
             self.dirtyCurrentSettings = False
+        gl.glCallList(self.substrate)
         gl.glCallList(self.currentSettings)
         gl.glCallList(self.beamPattern)
 

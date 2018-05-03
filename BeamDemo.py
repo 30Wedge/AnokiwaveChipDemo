@@ -14,7 +14,7 @@
 #-------------------------------------------------------------------------------
 import sys
 
-from beamdef import BeamDefinition
+from beamdef import BeamDefinition, NE, NW, SE, SW
 from spiwrite import AwmfCommander, SpiInitException, SB_MODE, TX_MODE, RX_MODE
 
 from PyQt5 import QtGui, QtCore, QtWidgets
@@ -45,10 +45,18 @@ class MyApp(QDialog, Ui_Dialog):
         self.phiBox.valueChanged.connect(self.sketchAfPattern)
         self.beamDefButton.clicked.connect(self.lockBeam)
         self.programButton.clicked.connect(self.progSpi)
+        self.radio2x2Button.toggled.connect(self.setAntennaType)
+        self.radio4x1Button.toggled.connect(self.setAntennaType) 
+
+        #initial antenna settings
+        self.aGrid = [[NE, NW, SE, SW]]
+        self.aInvertPattern = [[True, False, True, False]]
+        self.aSpacing = 5.4 * pow(10,-3)
+        self.setAntennaType()
 
         #initial view
         self.sketchAfPattern()
-    
+
     def tryConnectSPI(self):
         if self.spiConnected:
             return
@@ -88,6 +96,7 @@ class MyApp(QDialog, Ui_Dialog):
         phi and updates the drawing's current settings vector"""
         
         self.beamDef = BeamDefinition(self.thetaO(), self.phiO(), self.calculateWavelength(), beamStrength=self.getBeamAmp())
+        self.beamDef.setAntenna(self.aGrid, self.aInvertPattern, self.aSpacing)
         self.phaseSettings = self.beamDef.getPhaseSettings()
         self.glViewer.setCurrentSettingVector(self.thetaO(), self.phiO())
 
@@ -112,7 +121,12 @@ class MyApp(QDialog, Ui_Dialog):
 
     def sketchAfPattern(self):
         """Temporarily calculates beam pattern and updates visuals"""
-        self.glViewer.setAFPoints( BeamDefinition(self.thetaO(), self.phiO(), self.calculateWavelength(), beamStrength=self.getBeamAmp()).generateAllAF() )
+        if self.phiBox.value() < 0 or self.phiBox.value() >= 360: #regulate input
+            self.phiBox.setValue(self.phiBox.value() % 360)
+
+        temp_bd = BeamDefinition(self.thetaO(), self.phiO(), self.calculateWavelength(), beamStrength=self.getBeamAmp())
+        temp_bd.setAntenna(self.aGrid, self.aInvertPattern, self.aSpacing)
+        self.glViewer.setAFPoints(temp_bd.generateAllAF())
 
     def progSpi(self):
         mode = RX_MODE
@@ -128,6 +142,24 @@ class MyApp(QDialog, Ui_Dialog):
             self.spiConnected = False
             self.programButton.setEnabled(False)
 
+    def setAntennaType(self):
+        """Looks at whether 2x2 or 4x1 is selected and updates subcomponents to behave"""
+        #clear locked beam
+        self.glViewer.setCurrentSettingVector(0, 0)
+        self.curSettingsLabel.setText("()")
+        self.programButton.setEnabled(False)
+        if self.radio2x2Button.isChecked():
+            self.aGrid = [[NW, NE], [SW, SE]]
+            self.aInvertPattern = [[True, False], [True, False]]
+            self.glViewer.setAntenna4x1(False)
+            self.phiBox.setEnabled(True)
+        elif self.radio4x1Button.isChecked():
+            self.aGrid = [[NE, NW, SE, SW]]
+            self.aInvertPattern = [[True, False, True, False]]
+            self.glViewer.setAntenna4x1(True)
+            self.phiBox.setValue(90)
+            self.phiBox.setEnabled(False)
+        self.sketchAfPattern()
 
 def main():
     app = QApplication(sys.argv)
