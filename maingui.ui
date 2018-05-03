@@ -98,6 +98,9 @@
           <height>111</height>
          </size>
         </property>
+        <property name="toolTip">
+         <string/>
+        </property>
         <property name="text">
          <string/>
         </property>
@@ -190,14 +193,17 @@
             <property name="suffix">
              <string> degrees</string>
             </property>
+            <property name="decimals">
+             <number>0</number>
+            </property>
             <property name="minimum">
-             <double>-360.000000000000000</double>
+             <double>-90.000000000000000</double>
             </property>
             <property name="maximum">
-             <double>360.000000000000000</double>
+             <double>90.000000000000000</double>
             </property>
             <property name="singleStep">
-             <double>0.500000000000000</double>
+             <double>1.000000000000000</double>
             </property>
            </widget>
           </item>
@@ -210,22 +216,31 @@
           </item>
           <item row="1" column="1">
            <widget class="QDoubleSpinBox" name="phiBox">
+            <property name="toolTipDuration">
+             <number>1</number>
+            </property>
             <property name="suffix">
              <string> degrees</string>
+            </property>
+            <property name="decimals">
+             <number>0</number>
             </property>
             <property name="minimum">
              <double>-360.000000000000000</double>
             </property>
             <property name="maximum">
-             <double>360.000000000000000</double>
+             <double>361.000000000000000</double>
             </property>
             <property name="singleStep">
-             <double>0.500000000000000</double>
+             <double>1.000000000000000</double>
             </property>
            </widget>
           </item>
           <item row="2" column="0">
            <widget class="QLabel" name="labelWavelength">
+            <property name="toolTip">
+             <string>Central wavelength of input signal</string>
+            </property>
             <property name="text">
              <string>wavelength</string>
             </property>
@@ -239,8 +254,14 @@
               <height>0</height>
              </size>
             </property>
+            <property name="toolTip">
+             <string>Central wavelength of common port signal</string>
+            </property>
             <property name="suffix">
              <string> GHz</string>
+            </property>
+            <property name="decimals">
+             <number>1</number>
             </property>
             <property name="minimum">
              <double>26.500000000000000</double>
@@ -258,6 +279,9 @@
           </item>
           <item row="3" column="0">
            <widget class="QLabel" name="labelAmplitude">
+            <property name="toolTip">
+             <string>Amplification of active path channels- unused lines will be set to maximum attenuation</string>
+            </property>
             <property name="text">
              <string>amplification</string>
             </property>
@@ -270,6 +294,9 @@
               <width>62</width>
               <height>0</height>
              </size>
+            </property>
+            <property name="toolTip">
+             <string>Amplification of active path channels- unused lines will be set to maximum attenuation</string>
             </property>
             <property name="suffix">
              <string> dB</string>
@@ -321,6 +348,9 @@
            <width>281</width>
            <height>23</height>
           </rect>
+         </property>
+         <property name="toolTip">
+          <string>Lock-in beam parameters</string>
          </property>
          <property name="text">
           <string>Hold</string>
@@ -380,6 +410,9 @@
           <height>50</height>
          </size>
         </property>
+        <property name="toolTip">
+         <string>Sends held parameters to device</string>
+        </property>
         <property name="text">
          <string>Program</string>
         </property>
@@ -392,6 +425,9 @@
           <width>16777215</width>
           <height>20</height>
          </size>
+        </property>
+        <property name="toolTip">
+         <string>Please connect a NI USB-8452 SPI interface to the computer. If one is already connected, try restarting BeamDemo</string>
         </property>
         <property name="styleSheet">
          <string notr="true">QLabel {color : red; }</string>

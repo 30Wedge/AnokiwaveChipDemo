@@ -43,6 +43,7 @@ class MyApp(QDialog, Ui_Dialog):
         #Connect inputs
         self.thetaBox.valueChanged.connect(self.sketchAfPattern)
         self.phiBox.valueChanged.connect(self.sketchAfPattern)
+        self.waveLengthBox.valueChanged.connect(self.sketchAfPattern)
         self.beamDefButton.clicked.connect(self.lockBeam)
         self.programButton.clicked.connect(self.progSpi)
         self.radio2x2Button.toggled.connect(self.setAntennaType)
