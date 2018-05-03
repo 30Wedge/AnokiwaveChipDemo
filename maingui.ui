@@ -128,7 +128,7 @@
          </property>
          <layout class="QHBoxLayout" name="horizontalLayout_3">
           <item>
-           <widget class="QRadioButton" name="radioButton_2">
+           <widget class="QRadioButton" name="radio4x1Button">
             <property name="text">
              <string>4x1</string>
             </property>
@@ -138,7 +138,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QRadioButton" name="radioButton">
+           <widget class="QRadioButton" name="radio2x2Button">
             <property name="text">
              <string>2x2</string>
             </property>
