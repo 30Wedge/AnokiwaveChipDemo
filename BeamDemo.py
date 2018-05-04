@@ -1,21 +1,24 @@
 #-------------------------------------------------------------------------------
-# Name:        BeamDemo
-# Purpose:     awmf0108 system control GUI
-#
-# Author:      Grayson Colwell
-#              Andy MacGregor
+# Name:                 BeamDemo
+# Original Purpose:     awmf0108 system control GUI
+#   
+# Current Purpose:      Demonstrate Andy and Grayson's coding skills without 
+#                       leaking Anokiwave's IP
+#   
+# Authors:              Grayson Colwell
+#                       Andy MacGregor
 #
 #              
-# Created:     12/12/2017
-# Copyright:   (c) Anokiwave Capstone Team 2017
-# Licence:     <LGPLv3>
-#   See        https://www1.qt.io/qt-licensing-terms/
-#              https://www.qt.io/download
+# Created:              12/12/2017
+# Copyright:            (c) Anokiwave Capstone Team 2017
+# Licence:              <LGPLv3>
+#   See                 https://www1.qt.io/qt-licensing-terms/
+#                       https://www.qt.io/download
 #-------------------------------------------------------------------------------
 import sys
 
 from beamdef import BeamDefinition, NE, NW, SE, SW
-from spiwrite import AwmfCommander, SpiInitException, SB_MODE, TX_MODE, RX_MODE
+from fake_spiwrite import AwmfCommander, SpiInitException, SB_MODE, TX_MODE, RX_MODE
 
 from PyQt5 import QtGui, QtCore, QtWidgets
 from PyQt5.QtWidgets import QDialog, QApplication
