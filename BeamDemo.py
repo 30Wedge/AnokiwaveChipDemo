@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 #-------------------------------------------------------------------------------
 # Name:                 BeamDemo
 # Original Purpose:     awmf0108 system control GUI
