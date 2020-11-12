@@ -76,6 +76,7 @@ class SPI(object):
         self.__IOPORT = c.c_uint8(0)    # Port# for GPIO on 8452
 
         # Load Ni8452x.dll
+        self._lspi = None
         try:
             fSpec = 'c:/windows/system32/Ni845x.dll'
             self._lspi = c.windll.LoadLibrary(fSpec)
@@ -102,6 +103,8 @@ class SPI(object):
     def __errStatus(self, statusCode):
         '''Return error message based on NI8452 error code. Updates
         .status=errCode and .errMsg= NI8452 error string'''
+        if self._lspi is None:
+            return self.errMsg
         self._lspi.ni845xStatusToString(statusCode, c.c_uint32(1024), c.byref(self.cErrMsg))
         self.errMsg = self.cErrMsg.value
         self.status = statusCode
@@ -122,6 +125,9 @@ class SPI(object):
         '''Opens a session to NI-SPI.
         Creates handles to hardware and spiScript
         Returns 0 for success else error number: .errMsg contains error detail'''
+        if self._lspi is None:
+            self.status = -1
+            return self.status
         fRet = self._lspi.ni845xFindDevice(c.byref(self._cDevStr),
                                            c.byref(self._cHdl), c.byref(self._cNdev))
 
@@ -153,6 +159,8 @@ class SPI(object):
         Creates handles to hardware and spiScript
         Returns 0 for success else error number: .errMsg contains error detail'''
 
+        if self._lspi is None:
+            return -1
         cResourceName = c.create_string_buffer(ResourceName)
 
         fRet = self._lspi.ni845xOpen(cResourceName, c.byref(self._cHdl))
@@ -191,6 +199,8 @@ class SPI(object):
         fRet = 0
 
         # VIO levels
+        if self._lspi is None:
+            return -1
         intVio = int(self.Vio)
         fRet = self._lspi.ni845xSetIoVoltageLevel(self._cHdl, intVio)
         if fRet !=0:
@@ -214,6 +224,8 @@ class SPI(object):
         '''Sets IO to safe state (0 V): disables SPI and sets all GPIO=0V
         Returns 0 for success, error coode otherwise'''
 
+        if self._lspi is None:
+            return -1
         # Set GPIO to 0V
         fRet = self._lspi.ni845xDioWritePort(self._cHdl, self.__IOPORT, c.c_uint8(0))
         if fRet!=0:
@@ -241,6 +253,8 @@ class SPI(object):
     def ioClose(self, shutDown=1):
         '''Closes SPI. shutDown!=0 sets all IO=0V'''
         # Shut down DIO and SPI if shutDown!=0
+        if self._lspi is None:
+            return -1
         if shutDown!=0:
             fRet = self.ioSafe()
             if fRet !=0:
@@ -267,6 +281,9 @@ class SPI(object):
     def ioWriteDIO(self, dioData=0):
         '''Writes dioData value out of GPIO port.  Assume necessary masking
         has already been applied to dioData. Returns 0/err code'''
+        if self._lspi is None:
+            return -1
+
         fRet = self._lspi.ni845xDioWritePort(self._cHdl, self.__IOPORT, c.c_uint8(dioData))
         if fRet != 0:
             pass
@@ -277,6 +294,8 @@ class SPI(object):
     # --------------------------- ioReadDIO() ---------------------------------
     def ioReadDIO(self):
         '''Returns DIO data value (uint8) returned from GPIO lines'''
+        if self._lspi is None:
+            return 0
         fRet = self._lspi.ni845xDioReadPort(self._cHdl, self.__IOPORT, c.byref(self._cIOdataIn))
         if fRet != 0:
             pass
@@ -290,6 +309,8 @@ class SPI(object):
     def ioWriteSPI(self, wData):
         '''Write wData array of bytes over SPI using SPIscript
            Returns data read back over spi'''
+        if self._lspi is None:
+            return 0
         fRet = 0
         # Num of bytes to be transmitted
         Nbytes=len(wData)
@@ -373,6 +394,8 @@ class SPI(object):
     def ioWriteRSPI(self, byteList):
         '''Writes data from byte list over SPI and readback. Returns:
             status, dataIn, bitCount'''
+        if self._lspi is None:
+            return 0, 0, 0
         # TODO: quick test use ioWriteSPI() and wrap.  However could implement
         # faster 'standard SPI call' in this space
         rData = self.ioWriteSPI(byteList)
@@ -384,6 +407,8 @@ class SPI(object):
     def ioWriteSPI2(self, wData, wordSize=8):
         '''Write wData array over SPI in wordSize chunks using SPIscript
            Returns data read back over spi'''
+        if self._lspi is None:
+            return [], 0
         fRet = 0
 
         # Num of words to be transmitted
@@ -481,6 +506,8 @@ class SPI(object):
         '''Write wData array over SPI in wordSize chunks using SPIscript
            Returns data read back over spi
            Uses ODIN A0 SPI protocol workaround'''
+        if self._lspi is None:
+            return -1
         fRet = 0
 
         iCSB = 0    # IO address for CSB (CS0)
@@ -609,6 +636,8 @@ class SPI(object):
             and readback data into nWords registers of wordSize. Note LDB is not strobed
             so no data written to device
             Returns list of register values'''
+            if self._lspi is None:
+                return []
             fRet = 0
 
             # Generate wData: [ 0,0,0,...0  ]: just clock through 0's
@@ -701,6 +730,8 @@ class SPI(object):
         addr:     FBS addres (3 clocks) 0-7
         fbsLine:  DIO line for FBS address (DIO=0-7)
         '''
+        if self._lspi is None:
+            return []
         f = []
 
         # Number of clks
@@ -761,6 +792,8 @@ class SPI(object):
         dioLine:    dioLine to pulse 0-7
         Return:
             0=success'''
+        if self._lspi is None:
+            return []
 
         f = []
 
